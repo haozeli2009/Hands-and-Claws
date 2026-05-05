@@ -1,0 +1,7 @@
+{
+  "id": "hands-and-claws",
+  "name": "Hands & Claws",
+  "description": "Bridge to a Hands&Claws agent collaboration system — send tasks, handle consent, manage group chat.",
+  "activation": { "onStartup": true },
+  "configSchema": {}
+}

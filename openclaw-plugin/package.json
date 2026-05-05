@@ -1,0 +1,35 @@
+{
+  "name": "openclaw-channel-hands-and-claws",
+  "version": "0.1.0",
+  "description": "OpenClaw channel plugin that bridges a user's openclaw instance to a Hands&Claws agent system.",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./setup": "./dist/setup-entry.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "typescript": "^5.6.0"
+  },
+  "openclaw": {
+    "pluginApi": "1",
+    "minGatewayVersion": "0.1.0",
+    "openclawVersion": ">=0.1.0",
+    "extensions": ["./dist/index.js", "./dist/setup-entry.js"]
+  },
+  "files": [
+    "dist",
+    "openclaw.plugin.json",
+    "README.md"
+  ]
+}

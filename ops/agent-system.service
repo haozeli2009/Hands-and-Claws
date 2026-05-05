@@ -1,0 +1,17 @@
+[Unit]
+Description=Agent System Backend
+After=network.target
+
+[Service]
+Type=simple
+User=appuser
+WorkingDirectory=/opt/agent_system/backend
+EnvironmentFile=/opt/agent_system/backend/.env
+ExecStart=/opt/agent_system/backend/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=5s
+StandardOutput=append:/opt/agent_system/backend/logs/service.log
+StandardError=append:/opt/agent_system/backend/logs/service.log
+
+[Install]
+WantedBy=multi-user.target

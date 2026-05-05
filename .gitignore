@@ -1,0 +1,37 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/logs/
+*.egg-info/
+
+# Environment / secrets
+.env
+*.env
+.env.*
+!.env.example
+!backend/.env.example
+
+# Frontend build
+frontend/dist/
+frontend/node_modules/
+
+# Plugin
+openclaw-plugin/node_modules/
+
+# OS
+.DS_Store
+*.swp
+
+# Database (contains user data — never commit)
+backend/data/users.db
+backend/data/*.db
+
+# Chat / session history
+chathistory.md
+
+# PDF / design files
+*.pdf
+*.html
+!frontend/index.html
