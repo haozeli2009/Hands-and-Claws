@@ -182,7 +182,7 @@ export default function CliPage() {
                    color: '#8b949e', padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}>
           ← Chat
         </button>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b' }}>OpenClaw CLI</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b' }}>Agent Monitor</span>
         <WorkflowMonitor vPad={10} />
         <span style={{ marginLeft: 'auto', color: '#555', fontSize: 11 }}>
           {log.length} event{log.length !== 1 ? 's' : ''}

@@ -53,7 +53,7 @@ function SettingsMenu({ onNavigate, onLogout, T }) {
     { label: 'Profile',     action: () => onNavigate('/profile') },
     { label: 'LLM',         action: () => onNavigate('/llm') },
     { label: 'OpenClaw',    action: () => onNavigate('/integrations') },
-    { label: 'OpenClaw CLI',action: () => onNavigate('/cli') },
+    { label: 'Agent Monitor', action: () => onNavigate('/cli') },
     { label: 'Workflow',    action: () => onNavigate('/workflow') },
     null,
     { label: 'Sign out',    action: onLogout, danger: true },
