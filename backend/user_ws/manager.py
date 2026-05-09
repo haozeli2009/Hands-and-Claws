@@ -120,4 +120,4 @@ class WSManager:
         return list(self._connections.keys())
 
     def count(self) -> int:
-        return sum(len(s) for s in self._connections.values())
+        return len(self._connections)

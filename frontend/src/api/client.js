@@ -14,6 +14,7 @@ async function request(method, path, body) {
   })
 
   if (!res.ok) {
+    if (res.status === 401) useAuthStore.getState().clear()
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     throw Object.assign(new Error(err.detail ?? 'Request failed'), { status: res.status })
   }

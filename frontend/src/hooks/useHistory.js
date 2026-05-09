@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useChatStore } from '../store/chatStore'
 import { useTaskStore } from '../store/taskStore'
+import { useAuthStore } from '../store/authStore'
 
 export function useHistory(token) {
   const fetched = useRef(false)
@@ -12,7 +13,10 @@ export function useHistory(token) {
     fetch('/api/history', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (r.status === 401) { useAuthStore.getState().clear(); return null }
+        return r.ok ? r.json() : null
+      })
       .then(data => {
         if (!data) return
         if (data.messages?.length) {

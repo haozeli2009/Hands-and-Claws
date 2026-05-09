@@ -156,12 +156,12 @@ function StatusBar({ token, T, avail, setAvail, send }) {
     const h = { Authorization: `Bearer ${token}` }
 
     fetch('/api/user/profile', { headers: h })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => { if (r.status === 401) { useAuthStore.getState().clear(); return null } return r.ok ? r.json() : null })
       .then(d => d && setAvail(!!d.availability))
       .catch(() => {})
 
     fetch('/api/user/llm', { headers: h })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => { if (r.status === 401) { useAuthStore.getState().clear(); return null } return r.ok ? r.json() : null })
       .then(d => {
         if (!d) return
         if (!d.enabled)        setLlm('disabled')
