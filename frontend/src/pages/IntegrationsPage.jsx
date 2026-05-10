@@ -174,6 +174,9 @@ export default function IntegrationsPage() {
   const registerCmd = 'openclaw plugin add ~/Hands-and-Claws/openclaw-plugin'
   const restartCmd  = 'openclaw restart   # or: systemctl --user restart openclaw'
 
+  const sectionHdr = { fontSize: 16, fontWeight: 600, color: T.ink, marginTop: 32, marginBottom: 6 }
+  const sectionSub  = { ...S.sub, marginBottom: 16 }
+
   return (
     <div style={S.page}>
       <div style={S.hdr}>
@@ -181,11 +184,122 @@ export default function IntegrationsPage() {
         <h1 style={S.h1}>Integrations</h1>
       </div>
 
-      <p style={S.sub}>
+      {/* ── GitHub App ─────────────────────────────────────────────── */}
+      <h2 style={sectionHdr}>GitHub App</h2>
+      <p style={sectionSub}>
+        Connect your GitHub repos so your Delegate can read PRs and issues as context when
+        you make a request. Accepted participants can post reviews and comments back to GitHub
+        directly from the platform — always using your installation.
+      </p>
+
+      {ghStatus === null && (
+        <p style={{ ...S.sub, color: T.ink4 }}>Loading GitHub status…</p>
+      )}
+
+      {ghStatus && !ghStatus.configured && (
+        <div style={S.warn}>
+          GitHub App is not configured on this server. The server admin needs to set
+          <code> GITHUB_APP_ID</code>, <code>GITHUB_APP_NAME</code>, and
+          <code> GITHUB_APP_PRIVATE_KEY_PATH</code> in the backend <code>.env</code>.
+        </div>
+      )}
+
+      {ghStatus && ghStatus.configured && (
+        <div style={S.card}>
+          {ghMessage && (
+            <p style={{ fontSize: 13, color: '#16a34a', marginBottom: 12, fontWeight: 500 }}>
+              {ghMessage}
+            </p>
+          )}
+
+          {!ghStatus.connected ? (
+            <>
+              <p style={{ ...S.sub, marginBottom: 14 }}>
+                No repos connected yet. Click below to install the GitHub App on your account
+                and select which repos to share with your Delegate.
+              </p>
+              <button
+                onClick={async () => {
+                  const res = await fetch('/api/github/app/start', {
+                    headers: { Authorization: `Bearer ${authToken}` },
+                    credentials: 'include',
+                  })
+                  if (res.ok) {
+                    const { url } = await res.json()
+                    window.location.href = url
+                  }
+                }}
+                style={{
+                  background: '#24292f',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Install GitHub App
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 500 }}>Connected</span>
+                <span style={{ fontSize: 12, color: T.ink4 }}>
+                  {ghStatus.repos?.length ?? 0} repo(s) accessible
+                </span>
+                <button
+                  style={{ ...S.tokenToggle, marginLeft: 'auto' }}
+                  onClick={refreshRepos}
+                  disabled={ghRefreshing}
+                >
+                  {ghRefreshing ? 'Refreshing…' : 'Refresh repos'}
+                </button>
+                <button
+                  style={{ ...S.tokenToggle, color: '#b91c1c', borderColor: '#fca5a5' }}
+                  onClick={disconnectGithubApp}
+                  disabled={ghDisconnecting}
+                >
+                  {ghDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+                </button>
+              </div>
+
+              {ghStatus.repos && ghStatus.repos.length > 0 && (
+                <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
+                  {ghStatus.repos.map(r => (
+                    <li key={r.full_name} style={{ fontSize: 13, color: T.ink2, marginBottom: 4 }}>
+                      <strong>{r.full_name}</strong>
+                      {r.private && (
+                        <span style={{ fontSize: 11, color: T.ink4, marginLeft: 6 }}>private</span>
+                      )}
+                      {r.description && (
+                        <span style={{ fontSize: 12, color: T.ink4, marginLeft: 6 }}>
+                          — {r.description}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <p style={{ ...S.note, marginTop: 14, marginLeft: 0 }}>
+                To change which repos are accessible, uninstall and reinstall the GitHub App
+                from your GitHub account settings, or click Disconnect and reconnect.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── OpenClaw Plugin ────────────────────────────────────────── */}
+      <h2 style={{ ...sectionHdr, marginTop: 40 }}>OpenClaw Plugin</h2>
+      <p style={sectionSub}>
         OpenClaw is a local-first personal assistant that runs on your own machine.
         This plugin registers <strong>Hands&amp;Claws as a channel</strong> inside your
         openclaw — just like Telegram or Slack is a channel. Events from your
-        Hands&amp;Claws Delegate arrive as messages on that channel, and whatever openclaw
+        Delegate arrive as messages on that channel, and whatever openclaw
         replies flows back into Hands&amp;Claws as you.
       </p>
 
@@ -240,7 +354,7 @@ export default function IntegrationsPage() {
         </div>
         <Code text={configJson} S={S} />
         <div style={S.note}>
-          The snippet above is pre-filled with your current JWT and this host's URL.
+          The snippet above is pre-filled with your current token and this host's URL.
         </div>
 
         <div style={S.step}>
@@ -253,7 +367,7 @@ export default function IntegrationsPage() {
       <div style={S.card}>
         <div style={{ ...S.stepTitle, marginBottom: 10 }}>How it behaves</div>
         <ul style={{ ...S.sub, marginLeft: 20, marginBottom: 12 }}>
-          <li>Inbound: Hands&amp;Claws LUI events (consent prompts, status updates, group messages) arrive as incoming messages on the <code>hands-and-claws</code> channel inside openclaw.</li>
+          <li>Inbound: Hands&amp;Claws events (consent prompts, status updates, group messages) arrive as incoming messages on the <code>hands-and-claws</code> channel inside openclaw.</li>
           <li>Outbound: anything openclaw sends on that channel becomes a <code>user_message</code> (or <code>consent_reply</code> for YES/NO replies) on Hands&amp;Claws, acting as you.</li>
           <li>Consent prompts render as plain text with a <code>YES</code> / <code>NO</code> instruction — reply <code>yes</code> or <code>no</code> to approve or decline.</li>
           <li>Your browser session keeps working — both surfaces receive the same events.</li>
@@ -282,119 +396,6 @@ export default function IntegrationsPage() {
           Your browser login session is unaffected.
         </p>
       </div>
-
-      {/* ── GitHub App ─────────────────────────────────────────────── */}
-      <h2 style={{ fontSize: 16, fontWeight: 600, color: T.ink, marginTop: 32, marginBottom: 8 }}>
-        GitHub App
-      </h2>
-      <p style={S.sub}>
-        Connect a GitHub App to let your Delegate read PRs and issues from your repos when
-        you make a request. Accepted participants can post reviews and comments back to GitHub
-        using the platform action endpoint — always on your repos, using your installation.
-      </p>
-
-      {ghStatus === null && (
-        <p style={{ ...S.sub, color: T.ink4 }}>Loading GitHub status…</p>
-      )}
-
-      {ghStatus && !ghStatus.configured && (
-        <div style={S.warn}>
-          GitHub App is not configured on this server. The server admin needs to set
-          <code> GITHUB_APP_ID</code>, <code>GITHUB_APP_NAME</code>, and
-          <code> GITHUB_APP_PRIVATE_KEY_PATH</code> in the backend <code>.env</code>.
-        </div>
-      )}
-
-      {ghStatus && ghStatus.configured && (
-        <div style={S.card}>
-          {ghMessage && (
-            <p style={{ fontSize: 13, color: '#16a34a', marginBottom: 12, fontWeight: 500 }}>
-              {ghMessage}
-            </p>
-          )}
-
-          {!ghStatus.connected ? (
-            <>
-              <p style={{ ...S.sub, marginBottom: 14 }}>
-                No GitHub App installed yet. Click below to install it on your GitHub account
-                and select which repos to connect.
-              </p>
-              <button
-                onClick={async () => {
-                  const res = await fetch('/api/github/app/start', {
-                    headers: { Authorization: `Bearer ${authToken}` },
-                    credentials: 'include',
-                  })
-                  if (res.ok) {
-                    const { url } = await res.json()
-                    window.location.href = url
-                  }
-                }}
-                style={{
-                  background: '#24292f',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  padding: '8px 18px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                Install GitHub App
-              </button>
-            </>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 500 }}>
-                  Connected
-                </span>
-                <span style={{ fontSize: 12, color: T.ink4 }}>
-                  {ghStatus.repos?.length ?? 0} repo(s) accessible
-                </span>
-                <button
-                  style={{ ...S.tokenToggle, marginLeft: 'auto' }}
-                  onClick={refreshRepos}
-                  disabled={ghRefreshing}
-                >
-                  {ghRefreshing ? 'Refreshing…' : 'Refresh repos'}
-                </button>
-                <button
-                  style={{ ...S.tokenToggle, color: '#b91c1c', borderColor: '#fca5a5' }}
-                  onClick={disconnectGithubApp}
-                  disabled={ghDisconnecting}
-                >
-                  {ghDisconnecting ? 'Disconnecting…' : 'Disconnect'}
-                </button>
-              </div>
-
-              {ghStatus.repos && ghStatus.repos.length > 0 && (
-                <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
-                  {ghStatus.repos.map(r => (
-                    <li key={r.full_name} style={{ fontSize: 13, color: T.ink2, marginBottom: 4 }}>
-                      <strong>{r.full_name}</strong>
-                      {r.private && (
-                        <span style={{ fontSize: 11, color: T.ink4, marginLeft: 6 }}>private</span>
-                      )}
-                      {r.description && (
-                        <span style={{ fontSize: 12, color: T.ink4, marginLeft: 6 }}>
-                          — {r.description}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <p style={{ ...S.note, marginTop: 14, marginLeft: 0 }}>
-                To change which repos are accessible, uninstall and reinstall the GitHub App
-                from your GitHub account settings, or click Disconnect and reconnect.
-              </p>
-            </>
-          )}
-        </div>
-      )}
     </div>
   )
 }
