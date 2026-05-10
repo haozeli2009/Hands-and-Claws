@@ -25,6 +25,10 @@ from api.history_routes import get_history, save_message, save_task, delete_task
 from api.llm_config_routes import get_llm_config, put_llm_config, delete_llm_config
 from api.openclaw_routes import get_openclaw_token, rotate_openclaw_token, get_openclaw_status
 from api.avatar_routes import get_avatar, upload_avatar, delete_avatar
+from api.github_app_routes import (
+    github_app_start, github_app_callback, github_app_status,
+    github_app_repos_refresh, github_app_disconnect, github_action,
+)
 from dashboard.routes import activity, stats, stream_page, stream_events
 
 logger = logging.getLogger("main")
@@ -60,6 +64,12 @@ def build_app(ws_manager, user_db, handler, tracker, protocol) -> Starlette:
         Route("/api/user/openclaw-token",        get_openclaw_token,    methods=["GET"]),
         Route("/api/user/openclaw-token/rotate", rotate_openclaw_token, methods=["POST"]),
         Route("/api/user/openclaw-status",       get_openclaw_status,   methods=["GET"]),
+        Route("/api/github/app/start",           github_app_start,          methods=["GET"]),
+        Route("/api/github/app/callback",        github_app_callback,       methods=["GET"]),
+        Route("/api/github/app/status",          github_app_status,         methods=["GET"]),
+        Route("/api/github/app/repos/refresh",   github_app_repos_refresh,  methods=["POST"]),
+        Route("/api/github/app",                 github_app_disconnect,     methods=["DELETE"]),
+        Route("/api/github/action",              github_action,             methods=["POST"]),
         Route("/api/user/avatar/{uid:int}",      get_avatar,            methods=["GET"]),
         Route("/api/user/avatar",                upload_avatar,         methods=["POST"]),
         Route("/api/user/avatar",                delete_avatar,         methods=["DELETE"]),

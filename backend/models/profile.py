@@ -1,4 +1,15 @@
+from __future__ import annotations
+from dataclasses import dataclass
 from pydantic import BaseModel
+
+
+@dataclass
+class GithubRepo:
+    owner:       str
+    name:        str
+    full_name:   str
+    private:     bool = False
+    description: str  = ""
 
 
 class ServerProfile(BaseModel):

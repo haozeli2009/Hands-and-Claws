@@ -151,21 +151,25 @@ class Handler:
     # ------------------------------------------------------------------
 
     async def _on_package_from_delegate(self, cid: str, uid: int,
-                                         data: str, intent: str) -> None:
+                                         data: str, intent: str,
+                                         github_context: dict | None = None) -> None:
         logger.info("Package from Delegate uid=%d cid=%s", uid, cid)
         self._cid_to_demand[cid] = uid
         task = asyncio.create_task(
-            self._run_orchestrator(cid=cid, uid=uid, data=data, intent=intent),
+            self._run_orchestrator(cid=cid, uid=uid, data=data,
+                                   intent=intent, github_context=github_context),
             name=f"orchestrator:{cid}",
         )
         self._active_orchestrator_tasks[cid] = task
 
     async def _run_orchestrator(self, cid: str, uid: int,
-                                 data: str, intent: str) -> None:
+                                 data: str, intent: str,
+                                 github_context: dict | None = None) -> None:
         try:
             await self.orchestrator.process(
                 cid=cid, uid=uid, data=data,
                 intent=intent, pending=self._pending,
+                github_context=github_context,
             )
         except asyncio.CancelledError:
             logger.info("Orchestrator cancelled cid=%s", cid)

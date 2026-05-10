@@ -42,13 +42,22 @@ class Config:
     JWT_SECRET          = os.environ.get("JWT_SECRET", "change-me-in-production")
     JWT_EXPIRY_DAYS     = int(os.environ.get("JWT_EXPIRY_DAYS", "7"))
 
-    # --- GitHub OAuth ---
+    # --- GitHub OAuth (sign-in) ---
     # Create an OAuth app at https://github.com/settings/developers
     # Authorization callback URL must match GITHUB_REDIRECT_URI exactly.
     # If any of these are empty, the GitHub sign-in button is disabled.
     GITHUB_CLIENT_ID     = os.environ.get("GITHUB_CLIENT_ID", "")
     GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
     GITHUB_REDIRECT_URI  = os.environ.get("GITHUB_REDIRECT_URI", "")
+
+    # --- GitHub App (repo integration) ---
+    # Create a GitHub App at https://github.com/settings/apps
+    # Required permissions: Contents (read), Pull requests (read+write), Issues (read+write)
+    # Set callback URL to: https://yourdomain.com/api/github/app/callback
+    # GITHUB_APP_PRIVATE_KEY_PATH: path to downloaded .pem file (preferred)
+    # GITHUB_APP_PRIVATE_KEY: PEM content directly (use \n for newlines)
+    GITHUB_APP_ID   = os.environ.get("GITHUB_APP_ID", "")
+    GITHUB_APP_NAME = os.environ.get("GITHUB_APP_NAME", "")   # URL slug, e.g. hands-and-claws
 
     # --- Admin dashboard ---
     DASHBOARD_USER      = os.environ.get("DASHBOARD_USER", "admin")
@@ -62,3 +71,20 @@ class Config:
     LOG_FILE            = os.environ.get("LOG_FILE", "logs/service.log")
     LOG_MAX_BYTES       = int(os.environ.get("LOG_MAX_BYTES", str(10 * 1024 * 1024)))
     LOG_BACKUP_COUNT    = int(os.environ.get("LOG_BACKUP_COUNT", "5"))
+
+    # Populated after class definition (needs file I/O)
+    GITHUB_APP_PRIVATE_KEY: str = ""
+
+
+def _load_github_app_private_key() -> str:
+    path = os.environ.get("GITHUB_APP_PRIVATE_KEY_PATH", "")
+    if path:
+        try:
+            with open(path) as f:
+                return f.read()
+        except OSError:
+            pass
+    return os.environ.get("GITHUB_APP_PRIVATE_KEY", "").replace("\\n", "\n")
+
+
+Config.GITHUB_APP_PRIVATE_KEY = _load_github_app_private_key()

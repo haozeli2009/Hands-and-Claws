@@ -19,6 +19,14 @@ class UserRow:
 
 
 @dataclass
+class GithubInstallationRow:
+    uid:             int
+    installation_id: str
+    repos:           str   # JSON array of {owner, name, full_name, private, description}
+    connected_at:    str
+
+
+@dataclass
 class LlmConfigRow:
     uid:                int
     provider:           str
@@ -204,6 +212,13 @@ class UserDB:
                     model              TEXT NOT NULL,
                     api_key_ciphertext TEXT NOT NULL,
                     updated_at         TEXT NOT NULL
+                )""")
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS github_installations (
+                    uid             INTEGER PRIMARY KEY REFERENCES users(uid),
+                    installation_id TEXT NOT NULL,
+                    repos           TEXT NOT NULL DEFAULT '[]',
+                    connected_at    TEXT NOT NULL
                 )""")
             await db.commit()
         logger.info("UserDB initialised at %s", self._path)
@@ -668,3 +683,74 @@ class UserDB:
             )
             await db.commit()
         return token
+
+    # ------------------------------------------------------------------
+    # GitHub App installation
+    # ------------------------------------------------------------------
+
+    async def get_github_installation(self, uid: int) -> GithubInstallationRow | None:
+        async with aiosqlite.connect(self._path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT uid, installation_id, repos, connected_at FROM github_installations WHERE uid=?",
+                (uid,),
+            ) as cur:
+                row = await cur.fetchone()
+                if row is None:
+                    return None
+                return GithubInstallationRow(
+                    uid=row["uid"],
+                    installation_id=row["installation_id"],
+                    repos=row["repos"],
+                    connected_at=row["connected_at"],
+                )
+
+    async def upsert_github_installation(
+        self, uid: int, installation_id: str, repos: str
+    ) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self._path) as db:
+            await db.execute(
+                """INSERT INTO github_installations (uid, installation_id, repos, connected_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(uid) DO UPDATE SET
+                     installation_id=excluded.installation_id,
+                     repos=excluded.repos,
+                     connected_at=excluded.connected_at""",
+                (uid, installation_id, repos, now),
+            )
+            await db.commit()
+
+    async def delete_github_installation(self, uid: int) -> None:
+        async with aiosqlite.connect(self._path) as db:
+            await db.execute(
+                "DELETE FROM github_installations WHERE uid=?", (uid,)
+            )
+            await db.commit()
+
+    async def get_uid_by_installation_id(self, installation_id: str) -> int | None:
+        async with aiosqlite.connect(self._path) as db:
+            async with db.execute(
+                "SELECT uid FROM github_installations WHERE installation_id=?",
+                (installation_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                return row[0] if row else None
+
+    async def get_demand_uid_for_cid(self, cid: str) -> int | None:
+        """Find the demand-side uid for a given task cid from task_cards."""
+        import json as _json
+        async with aiosqlite.connect(self._path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT uid, data FROM task_cards WHERE card_id=?", (cid,)
+            ) as cur:
+                rows = await cur.fetchall()
+        for r in rows:
+            try:
+                data = _json.loads(r["data"])
+                if data.get("role") == "demand":
+                    return r["uid"]
+            except Exception:
+                pass
+        return None

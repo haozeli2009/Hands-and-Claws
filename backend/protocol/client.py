@@ -179,10 +179,17 @@ class ProtocolClient:
     # ------------------------------------------------------------------
     # Delegate ↔ Orchestrator (in-process)
     # ------------------------------------------------------------------
+    async def get_github_installation(self, uid: int):
+        """Return GithubInstallationRow for uid, or None."""
+        if self._user_db is None:
+            return None
+        return await self._user_db.get_github_installation(uid)
+
     async def send_package_to_orchestrator(self, cid: str, uid: int,
-                                            data: str, intent: str) -> None:
+                                            data: str, intent: str,
+                                            github_context: dict | None = None) -> None:
         if self._cb_package_from_delegate:
-            await self._cb_package_from_delegate(cid, uid, data, intent)
+            await self._cb_package_from_delegate(cid, uid, data, intent, github_context)
 
     async def send_task_to_delegate(self, cid: str, uid: int, task: str) -> None:
         if self._cb_task_from_orchestrator:

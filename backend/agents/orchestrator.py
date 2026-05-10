@@ -75,11 +75,13 @@ class Orchestrator(BaseAgent):
         self.protocol = protocol
 
     async def process(self, cid: str, uid: int, data: str,
-                      intent: str, pending: dict) -> None:
+                      intent: str, pending: dict,
+                      github_context: dict | None = None) -> None:
         self._cid                  = cid
         self._uid                  = uid
         self._intent               = intent
         self._pending              = pending
+        self._github_context       = github_context
         self._profile_names:   dict[int, str]    = {}
         self._username_map:    dict[int, str]     = {}
         self._profiles:        dict[int, object] = {}
@@ -346,14 +348,22 @@ Your job:
 
                 # New supply user's card: all existing accepted supply users are their peers
                 peers_for_new = [p for p in self._accepted_supply if p["uid"] != supply_uid]
-                await self.protocol.send_task_card(supply_uid, {
+                supply_card: dict = {
                     "card_id":     self._cid,
                     "role":        "supply",
                     "intent":      self._intent,
                     "demand_uid":  self._uid,
                     "demand_info": self._demand_info,
                     "peers":       peers_for_new,
-                })
+                }
+                if self._github_context:
+                    # Include minimal GitHub reference so frontend can show action buttons
+                    supply_card["github_ref"] = {
+                        k: self._github_context[k]
+                        for k in ("type", "owner", "repo", "number", "url")
+                        if k in self._github_context
+                    }
+                await self.protocol.send_task_card(supply_uid, supply_card)
 
         await self.protocol.send_pipeline_step(
             self._cid, self._uid, step_id,

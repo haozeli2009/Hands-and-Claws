@@ -32,6 +32,7 @@ from models.profile import LocalProfile
 from protocol.client import ProtocolClient
 from utils.llm import LLMClient
 from config import Config
+import github.client as gh_client
 
 logger = logging.getLogger(__name__)
 
@@ -113,10 +114,11 @@ class Delegate(BaseAgent):
 
         # 5. Forward consented package to the matching engine
         await p.send_package_to_orchestrator(
-            cid    = cid,
-            uid    = self.uid,
-            data   = data_excerpt,   # only the consented excerpt, never the full profile
-            intent = intent,
+            cid            = cid,
+            uid            = self.uid,
+            data           = data_excerpt,   # only the consented excerpt, never the full profile
+            intent         = intent,
+            github_context = self._github_context,
         )
 
     # ------------------------------------------------------------------
@@ -205,6 +207,17 @@ class Delegate(BaseAgent):
         self._orig_input     = input
         self._clarify_count  = 0
         self._thinking_parts = []
+        self._github_context: dict | None = None
+
+        # Load GitHub installation so the LLM knows which repos are available
+        gh_installation = await self.protocol.get_github_installation(self.uid)
+        gh_repos_block  = ""
+        if gh_installation:
+            import json as _json
+            repos = _json.loads(gh_installation.repos) if gh_installation.repos else []
+            if repos:
+                lines = "\n".join(f"  - {r['full_name']}" for r in repos[:20])
+                gh_repos_block = f"\nGITHUB REPOS (connected via GitHub App):\n{lines}\n"
 
         system_prompt = f"""You are a personal agent acting on behalf of user {self.uid}.
 
@@ -214,7 +227,7 @@ extract the minimal relevant excerpt needed to fulfil their request.
 
 PRIVATE PROFILE (do not expose in full):
 {profile.data}
-
+{gh_repos_block}
 Your job:
   1. Understand what the user is asking for.
   2. If a detail would meaningfully change WHICH member you match them with
@@ -256,6 +269,30 @@ Your job:
             },
         }]
 
+        if gh_installation:
+            tools.append({
+                "name": "fetch_github_context",
+                "description": (
+                    "Fetch the details of a GitHub PR or issue from the user's "
+                    "connected repos. Use this when the user mentions a specific "
+                    "PR or issue number, so the full context (title, body, diff, "
+                    "comments) can be included in the data excerpt for consent. "
+                    "Returns a structured summary as a string."
+                ),
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "repo":   {"type": "string",
+                                   "description": "Full repo name e.g. 'owner/reponame'"},
+                        "type":   {"type": "string", "enum": ["pr", "issue"],
+                                   "description": "Resource type"},
+                        "number": {"type": "integer",
+                                   "description": "PR or issue number"},
+                    },
+                    "required": ["repo", "type", "number"],
+                },
+            })
+
         async def on_thinking(t: str):
             self._thinking_parts.append(t)
             await self.protocol.send_thinking(cid=cid, uid=self.uid, text=t)
@@ -286,7 +323,64 @@ Your job:
     async def _handle_tool_call(self, name: str, inputs: dict) -> object:
         if name == "ask_user":
             return await self._ask_user_and_wait(str(inputs.get("question", "")).strip())
+        if name == "fetch_github_context":
+            return await self._fetch_github_context(
+                repo=str(inputs.get("repo", "")).strip(),
+                resource_type=str(inputs.get("type", "pr")).strip(),
+                number=int(inputs.get("number", 0)),
+            )
         return {"error": f"Unknown tool: {name}"}
+
+    async def _fetch_github_context(
+        self, repo: str, resource_type: str, number: int
+    ) -> str:
+        """Fetch PR or issue details from GitHub and store for pipeline threading."""
+        if not repo or not number:
+            return "(invalid repo or number)"
+        parts = repo.split("/", 1)
+        if len(parts) != 2:
+            return f"(repo must be 'owner/name', got {repo!r})"
+        owner, repo_name = parts
+
+        installation = await self.protocol.get_github_installation(self.uid)
+        if installation is None:
+            return "(GitHub App not connected)"
+
+        try:
+            token, _ = await gh_client.get_installation_token(installation.installation_id)
+            if resource_type == "pr":
+                ctx = await gh_client.get_pr(token, owner, repo_name, number)
+            else:
+                ctx = await gh_client.get_issue(token, owner, repo_name, number)
+        except Exception as exc:
+            logger.warning("fetch_github_context failed: %s", exc)
+            return f"(failed to fetch GitHub context: {exc})"
+
+        self._github_context = ctx
+
+        # Return a human-readable summary for the LLM to include in data_excerpt
+        if resource_type == "pr":
+            diff_preview = ctx.get("diff", "")[:500]
+            return (
+                f"PR #{ctx['number']} in {repo}: {ctx['title']}\n"
+                f"Author: {ctx['author']}  |  {ctx['head_branch']} → {ctx['base_branch']}\n"
+                f"State: {ctx['state']}  |  +{ctx['additions']} -{ctx['deletions']} "
+                f"across {ctx['files_changed']} file(s)\n"
+                f"Body: {ctx['body'][:400] or '(none)'}\n"
+                f"Diff preview:\n{diff_preview}"
+            )
+        else:
+            comments_preview = "\n".join(
+                f"  {c['author']}: {c['body'][:100]}"
+                for c in ctx.get("comments", [])[:3]
+            )
+            return (
+                f"Issue #{ctx['number']} in {repo}: {ctx['title']}\n"
+                f"Author: {ctx['author']}  |  State: {ctx['state']}\n"
+                f"Labels: {', '.join(ctx.get('labels', [])) or 'none'}\n"
+                f"Body: {ctx['body'][:400] or '(none)'}\n"
+                + (f"Recent comments:\n{comments_preview}" if comments_preview else "")
+            )
 
     async def _ask_user_and_wait(self, question: str) -> str:
         """Send a clarifying question to the user and await their reply."""

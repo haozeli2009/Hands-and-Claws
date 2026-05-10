@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useTheme } from '../hooks/useTheme'
 
@@ -57,11 +57,20 @@ function Code({ text, S }) {
 export default function IntegrationsPage() {
   const T        = useTheme()
   const S        = mkS(T)
-  const navigate   = useNavigate()
+  const navigate      = useNavigate()
+  const [searchParams] = useSearchParams()
   const authToken  = useAuthStore(s => s.token)
   const [show, setShow]               = useState(false)
   const [pluginToken, setPluginToken] = useState(null)
   const [rotating, setRotating]       = useState(false)
+
+  // GitHub App state
+  const [ghStatus, setGhStatus]           = useState(null)   // null=loading, {configured,connected,repos}
+  const [ghDisconnecting, setGhDisconnecting] = useState(false)
+  const [ghRefreshing, setGhRefreshing]   = useState(false)
+  const [ghMessage, setGhMessage]         = useState(
+    searchParams.get('github_app') === 'connected' ? 'GitHub App connected!' : ''
+  )
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
 
@@ -79,6 +88,51 @@ export default function IntegrationsPage() {
   }, [authToken])
 
   useEffect(() => { fetchToken() }, [fetchToken])
+
+  const fetchGhStatus = useCallback(async () => {
+    if (!authToken) return
+    try {
+      const res = await fetch('/api/github/app/status', {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      if (res.ok) setGhStatus(await res.json())
+    } catch { /* network error */ }
+  }, [authToken])
+
+  useEffect(() => { fetchGhStatus() }, [fetchGhStatus])
+
+  async function disconnectGithubApp() {
+    if (!authToken || ghDisconnecting) return
+    setGhDisconnecting(true)
+    try {
+      await fetch('/api/github/app', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      setGhStatus(s => ({ ...s, connected: false, repos: [] }))
+      setGhMessage('Disconnected.')
+    } finally {
+      setGhDisconnecting(false)
+    }
+  }
+
+  async function refreshRepos() {
+    if (!authToken || ghRefreshing) return
+    setGhRefreshing(true)
+    try {
+      const res = await fetch('/api/github/app/repos/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setGhStatus(s => ({ ...s, repos: data.repos }))
+        setGhMessage(`Refreshed — ${data.repos.length} repo(s) found.`)
+      }
+    } finally {
+      setGhRefreshing(false)
+    }
+  }
 
   async function rotateToken() {
     if (!authToken || rotating) return
@@ -228,6 +282,110 @@ export default function IntegrationsPage() {
           Your browser login session is unaffected.
         </p>
       </div>
+
+      {/* ── GitHub App ─────────────────────────────────────────────── */}
+      <h2 style={{ fontSize: 16, fontWeight: 600, color: T.ink, marginTop: 32, marginBottom: 8 }}>
+        GitHub App
+      </h2>
+      <p style={S.sub}>
+        Connect a GitHub App to let your Delegate read PRs and issues from your repos when
+        you make a request. Accepted participants can post reviews and comments back to GitHub
+        using the platform action endpoint — always on your repos, using your installation.
+      </p>
+
+      {ghStatus === null && (
+        <p style={{ ...S.sub, color: T.ink4 }}>Loading GitHub status…</p>
+      )}
+
+      {ghStatus && !ghStatus.configured && (
+        <div style={S.warn}>
+          GitHub App is not configured on this server. The server admin needs to set
+          <code> GITHUB_APP_ID</code>, <code>GITHUB_APP_NAME</code>, and
+          <code> GITHUB_APP_PRIVATE_KEY_PATH</code> in the backend <code>.env</code>.
+        </div>
+      )}
+
+      {ghStatus && ghStatus.configured && (
+        <div style={S.card}>
+          {ghMessage && (
+            <p style={{ fontSize: 13, color: '#16a34a', marginBottom: 12, fontWeight: 500 }}>
+              {ghMessage}
+            </p>
+          )}
+
+          {!ghStatus.connected ? (
+            <>
+              <p style={{ ...S.sub, marginBottom: 14 }}>
+                No GitHub App installed yet. Click below to install it on your GitHub account
+                and select which repos to connect.
+              </p>
+              <a
+                href="/api/github/app/start"
+                style={{
+                  display: 'inline-block',
+                  background: '#24292f',
+                  color: '#fff',
+                  borderRadius: 6,
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                Install GitHub App
+              </a>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 500 }}>
+                  Connected
+                </span>
+                <span style={{ fontSize: 12, color: T.ink4 }}>
+                  {ghStatus.repos?.length ?? 0} repo(s) accessible
+                </span>
+                <button
+                  style={{ ...S.tokenToggle, marginLeft: 'auto' }}
+                  onClick={refreshRepos}
+                  disabled={ghRefreshing}
+                >
+                  {ghRefreshing ? 'Refreshing…' : 'Refresh repos'}
+                </button>
+                <button
+                  style={{ ...S.tokenToggle, color: '#b91c1c', borderColor: '#fca5a5' }}
+                  onClick={disconnectGithubApp}
+                  disabled={ghDisconnecting}
+                >
+                  {ghDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+                </button>
+              </div>
+
+              {ghStatus.repos && ghStatus.repos.length > 0 && (
+                <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
+                  {ghStatus.repos.map(r => (
+                    <li key={r.full_name} style={{ fontSize: 13, color: T.ink2, marginBottom: 4 }}>
+                      <strong>{r.full_name}</strong>
+                      {r.private && (
+                        <span style={{ fontSize: 11, color: T.ink4, marginLeft: 6 }}>private</span>
+                      )}
+                      {r.description && (
+                        <span style={{ fontSize: 12, color: T.ink4, marginLeft: 6 }}>
+                          — {r.description}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <p style={{ ...S.note, marginTop: 14, marginLeft: 0 }}>
+                To change which repos are accessible, uninstall and reinstall the GitHub App
+                from your GitHub account settings, or click Disconnect and reconnect.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
