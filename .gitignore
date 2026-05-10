@@ -32,6 +32,9 @@ backend/data/*.db
 # Chat / session history
 chathistory.md
 
+# Demo / internal scripts
+backend/demo_run.py
+
 # PDF / design files
 *.pdf
 *.html
