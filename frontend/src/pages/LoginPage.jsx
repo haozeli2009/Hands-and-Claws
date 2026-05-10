@@ -117,7 +117,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
+
+      {/* ── Host info ── */}
+      <div style={{
+        position: 'absolute', top: 16, right: 20, zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 7,
+        background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255,255,255,0.10)',
+        borderRadius: 20, padding: '5px 12px',
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
+        <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.01em' }}>
+          {window.location.host}
+        </span>
+      </div>
 
       {/* ── Left panel 70% ── */}
       <div style={{
