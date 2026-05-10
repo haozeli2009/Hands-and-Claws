@@ -236,4 +236,24 @@ async def github_action(request: Request) -> JSONResponse:
 
     logger.info("GitHub action=%s supply=%d demand=%d cid=%s %s/%s#%d",
                 action, supply_uid, demand_uid, cid, owner, repo, number)
+
+    # Announce in group chat
+    try:
+        from protocol.client import InProcessClient
+        proto: InProcessClient = request.app.state.protocol
+        supply_user = await db.get_by_uid(supply_uid)
+        supply_name = supply_user.username if supply_user else f"user_{supply_uid}"
+        ref = f"{owner}/{repo}#{number}"
+        if action == "post_pr_review":
+            verb = {"APPROVE": "approved", "REQUEST_CHANGES": "requested changes on",
+                    "COMMENT": "reviewed"}.get(event, "reviewed")
+            notice = f"__EVENT__:github_review"
+            text   = f"{supply_name} {verb} PR {ref} on GitHub"
+        else:
+            notice = f"__EVENT__:github_comment"
+            text   = f"{supply_name} commented on issue {ref} on GitHub"
+        await proto.broadcast_group_message(cid, supply_uid, text, kind=notice.split(":")[1])
+    except Exception:
+        logger.exception("Failed to broadcast GitHub action notice cid=%s", cid)
+
     return JSONResponse({"ok": True, **result})

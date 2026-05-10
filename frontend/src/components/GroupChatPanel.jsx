@@ -38,26 +38,34 @@ function parseEvent(m) {
   return null
 }
 
-function EventCard({ username, ts, kind }) {
+function EventCard({ username, ts, kind, text }) {
   const T = useTheme()
-  const label = kind === 'task_finished'
-    ? 'marked this task as finished'
+  const label = kind === 'task_finished'    ? 'marked this task as finished'
+    : kind === 'github_review'  ? text?.replace(username + ' ', '') || 'posted a GitHub review'
+    : kind === 'github_comment' ? text?.replace(username + ' ', '') || 'posted a GitHub comment'
     : `triggered event: ${kind}`
+
+  const isGh = kind === 'github_review' || kind === 'github_comment'
+  const bg     = isGh ? '#f0fdf4' : T.greenSoft
+  const border = isGh ? '#bbf7d0' : T.line
+  const icon   = isGh ? '🐙' : '✓'
+  const iconBg = isGh ? '#166534' : '#22c55e'
+
   return (
     <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
       <div style={{
-        background: T.greenSoft, border: `1px solid ${T.line}`,
+        background: bg, border: `1px solid ${border}`,
         borderRadius: 10, padding: '8px 12px',
         display: 'flex', alignItems: 'center', gap: 8,
         maxWidth: '92%',
       }}>
         <div style={{
           width: 22, height: 22, borderRadius: '50%',
-          background: '#22c55e', color: '#fff',
+          background: iconBg, color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 13, fontWeight: 700, flexShrink: 0,
         }}>
-          ✓
+          {icon}
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.35 }}>
@@ -521,7 +529,7 @@ export default function GroupChatPanel({ send }) {
           const isMe = String(m.uid) === String(myUid)
           const event = parseEvent(m)
           if (event) {
-            return <EventCard key={m.id || i} username={m.username} ts={m.ts} kind={event} />
+            return <EventCard key={m.id || i} username={m.username} ts={m.ts} kind={event} text={m.text} />
           }
           return (
             <div key={m.id || i} style={{
