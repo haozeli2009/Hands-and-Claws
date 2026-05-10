@@ -239,8 +239,7 @@ async def github_action(request: Request) -> JSONResponse:
 
     # Announce in group chat
     try:
-        from protocol.client import InProcessClient
-        proto: InProcessClient = request.app.state.protocol
+        proto = request.app.state.protocol
         supply_user = await db.get_by_uid(supply_uid)
         supply_name = supply_user.username if supply_user else f"user_{supply_uid}"
         ref = f"{owner}/{repo}#{number}"
