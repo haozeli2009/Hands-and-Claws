@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 
 const S = {
   page:    { maxWidth: 720, margin: '0 auto', padding: '60px 24px 80px',
-             fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', lineHeight: 1.7 },
+             fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', lineHeight: 1.7,
+             background: '#fff', minHeight: '100vh' },
   nav:     { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 48 },
   logo:    { display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' },
   logoTxt: { fontSize: 16, fontWeight: 700, color: '#111', letterSpacing: '-0.01em' },
@@ -25,6 +26,7 @@ const S = {
 
 export default function PrivacyPage() {
   return (
+    <div style={{ background: '#fff', minHeight: '100vh' }}>
     <div style={S.page}>
 
       <nav style={S.nav}>
@@ -166,6 +168,7 @@ export default function PrivacyPage() {
       <footer style={S.footer}>
         <Link to="/login" style={{ ...S.a, marginRight: 16 }}>← Back to Hands&amp;Claws</Link>
       </footer>
+    </div>
     </div>
   )
 }
