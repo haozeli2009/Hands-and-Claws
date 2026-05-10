@@ -9,43 +9,35 @@ GitHub sends signed POST requests here for purchase lifecycle events:
   - marketplace_purchase.pending_change_cancelled
 
 Signature verification uses HMAC-SHA256 with GITHUB_MARKETPLACE_WEBHOOK_SECRET.
+
+Payload key fields:
+  sender.id          — GitHub user ID (used to look up our user row)
+  sender.login       — GitHub username (for logging)
+  marketplace_purchase.plan.name  — plan name string from Marketplace listing
+  previous_marketplace_purchase.plan.name — prior plan (on "changed" action)
 """
 from __future__ import annotations
 import hashlib
 import hmac
 import json
 import logging
+import secrets
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from config import Config
+from user.db import UserDB
 
 logger = logging.getLogger(__name__)
 
-
-async def _verify_signature(request: Request) -> bytes | None:
-    """Return raw body if signature is valid, None otherwise."""
-    sig_header = request.headers.get("X-Hub-Signature-256", "")
-    if not sig_header.startswith("sha256="):
-        return None
-    expected = hmac.new(
-        Config.GITHUB_MARKETPLACE_WEBHOOK_SECRET.encode(),
-        digestmod=hashlib.sha256,
-    )
-    body = await request.body()
-    expected.update(body)
-    if not secrets.compare_digest(sig_header[7:], expected.hexdigest()):
-        return None
-    return body
+FREE_PLAN = "free"
 
 
 async def marketplace_webhook(request: Request) -> JSONResponse:
-    import secrets as _secrets  # local to avoid shadowing module-level
-
     secret = Config.GITHUB_MARKETPLACE_WEBHOOK_SECRET
     if not secret:
-        logger.warning("marketplace_webhook: GITHUB_MARKETPLACE_WEBHOOK_SECRET not set — rejecting")
+        logger.warning("marketplace_webhook: GITHUB_MARKETPLACE_WEBHOOK_SECRET not set")
         return JSONResponse({"error": "webhook not configured"}, status_code=503)
 
     sig_header = request.headers.get("X-Hub-Signature-256", "")
@@ -53,7 +45,7 @@ async def marketplace_webhook(request: Request) -> JSONResponse:
 
     if sig_header.startswith("sha256="):
         mac = hmac.new(secret.encode(), body, hashlib.sha256)
-        if not _secrets.compare_digest(sig_header[7:], mac.hexdigest()):
+        if not secrets.compare_digest(sig_header[7:], mac.hexdigest()):
             logger.warning("marketplace_webhook: invalid signature")
             return JSONResponse({"error": "invalid signature"}, status_code=401)
     else:
@@ -66,50 +58,44 @@ async def marketplace_webhook(request: Request) -> JSONResponse:
     except Exception:
         return JSONResponse({"error": "bad json"}, status_code=400)
 
-    action = payload.get("action", "")
+    action   = payload.get("action", "")
     purchase = payload.get("marketplace_purchase", {})
-    account = payload.get("sender", {})
+    sender   = payload.get("sender", {})
+    github_id   = str(sender.get("id", ""))
+    github_login = sender.get("login", "?")
+    plan_name    = purchase.get("plan", {}).get("name", FREE_PLAN)
 
-    logger.info(
-        "marketplace_webhook event=%s action=%s account=%s plan=%s",
-        event, action,
-        account.get("login", "?"),
-        purchase.get("plan", {}).get("name", "?"),
-    )
+    logger.info("marketplace event=%s action=%s github=%s plan=%s",
+                event, action, github_login, plan_name)
 
-    if event == "marketplace_purchase":
-        if action == "purchased":
-            _on_purchased(payload)
-        elif action == "cancelled":
-            _on_cancelled(payload)
-        elif action in ("changed", "pending_change"):
-            _on_changed(payload)
+    if event != "marketplace_purchase":
+        return JSONResponse({"ok": True})
+
+    db: UserDB = request.app.state.user_db
+
+    if action == "purchased":
+        await _set_plan(db, github_id, github_login, plan_name)
+
+    elif action == "cancelled":
+        await _set_plan(db, github_id, github_login, FREE_PLAN)
+
+    elif action in ("changed", "pending_change"):
+        prev = payload.get("previous_marketplace_purchase", {}).get("plan", {}).get("name", "?")
+        logger.info("plan change %s → %s for github=%s", prev, plan_name, github_login)
+        await _set_plan(db, github_id, github_login, plan_name)
 
     return JSONResponse({"ok": True})
 
 
-# ---------------------------------------------------------------------------
-# Event handlers — extend these as billing logic is added
-# ---------------------------------------------------------------------------
-
-def _on_purchased(payload: dict) -> None:
-    account = payload.get("sender", {})
-    plan = payload.get("marketplace_purchase", {}).get("plan", {})
-    logger.info("New Marketplace purchase: account=%s plan=%s",
-                account.get("login"), plan.get("name"))
-    # TODO: mark account as paid in DB / unlock plan features
-
-
-def _on_cancelled(payload: dict) -> None:
-    account = payload.get("sender", {})
-    logger.info("Marketplace cancellation: account=%s", account.get("login"))
-    # TODO: downgrade account to free tier
-
-
-def _on_changed(payload: dict) -> None:
-    account = payload.get("sender", {})
-    prev = payload.get("previous_marketplace_purchase", {}).get("plan", {})
-    curr = payload.get("marketplace_purchase", {}).get("plan", {})
-    logger.info("Marketplace plan change: account=%s %s → %s",
-                account.get("login"), prev.get("name"), curr.get("name"))
-    # TODO: update plan entitlements in DB
+async def _set_plan(db: UserDB, github_id: str, github_login: str, plan: str) -> None:
+    updated = await db.set_marketplace_plan(github_id, plan)
+    if updated:
+        logger.info("marketplace: set plan=%r for github=%s", plan, github_login)
+    else:
+        # User hasn't signed up yet — they purchased before creating an account.
+        # The plan will be applied when they sign in via GitHub OAuth and their
+        # github_id is linked to their new account.
+        logger.warning(
+            "marketplace: no local user for github_id=%s (%s) — plan=%r stored pending sign-up",
+            github_id, github_login, plan,
+        )

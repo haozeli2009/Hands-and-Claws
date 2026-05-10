@@ -114,6 +114,8 @@ class UserDB:
                 )
             if "github_login" not in ucols:
                 await db.execute("ALTER TABLE users ADD COLUMN github_login TEXT")
+            if "marketplace_plan" not in ucols:
+                await db.execute("ALTER TABLE users ADD COLUMN marketplace_plan TEXT NOT NULL DEFAULT 'free'")
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS profiles (
                     uid          INTEGER PRIMARY KEY REFERENCES users(uid),
@@ -280,6 +282,16 @@ class UserDB:
                 return None if row is None else UserRow(
                     row["uid"], row["username"], row["email"], row["participant_type"]
                 )
+
+    async def set_marketplace_plan(self, github_id: str, plan: str) -> bool:
+        """Update marketplace_plan for the user with this GitHub ID. Returns True if a row was updated."""
+        async with aiosqlite.connect(self._path) as db:
+            cur = await db.execute(
+                "UPDATE users SET marketplace_plan = ? WHERE github_id = ?",
+                (plan, str(github_id)),
+            )
+            await db.commit()
+            return cur.rowcount > 0
 
     async def link_github(self, uid: int, github_id: str, github_login: str = "") -> None:
         async with aiosqlite.connect(self._path) as db:
