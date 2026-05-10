@@ -73,6 +73,8 @@ export default function LoginPage() {
   const [loading, setLoading]     = useState(false)
   const [providers, setProviders] = useState({ github: false })
   const [certifiedHost, setCertifiedHost] = useState(null)
+  const [allHosts, setAllHosts]           = useState([])
+  const [menuOpen, setMenuOpen]           = useState(false)
 
   useEffect(() => {
     if (window.location.hash && window.location.hash.length > 1) {
@@ -106,11 +108,19 @@ export default function LoginPage() {
     fetch('/certified-hosts.json')
       .then(r => r.ok ? r.json() : [])
       .then(list => {
+        setAllHosts(list)
         const match = list.find(h => h.domain === window.location.host)
         if (match) setCertifiedHost(match)
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function close(e) { if (!e.target.closest('#host-menu')) setMenuOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [menuOpen])
 
   async function submit(e) {
     e.preventDefault()
@@ -167,16 +177,67 @@ export default function LoginPage() {
             </span>
           </div>
         )}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRadius: 20, padding: '5px 12px',
-        }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.01em' }}>
-            {window.location.host}
-          </span>
+        <div id="host-menu" style={{ position: 'relative' }}>
+          <button onClick={() => setMenuOpen(o => !o)} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: 20, padding: '5px 12px',
+            cursor: 'pointer',
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.01em' }}>
+              {window.location.host}
+            </span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {menuOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+              background: '#0f1729', border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 10, padding: '6px', minWidth: 280,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              zIndex: 100,
+            }}>
+              <div style={{ fontSize: 10, color: '#475569', padding: '4px 10px 8px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                Certified Hosts
+              </div>
+              {allHosts.map(h => {
+                const isCurrent = h.domain === window.location.host
+                return (
+                  <a key={h.domain} href={`https://${h.domain}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 10px', borderRadius: 7, textDecoration: 'none',
+                      background: isCurrent ? 'rgba(56,189,248,0.08)' : 'transparent',
+                      cursor: isCurrent ? 'default' : 'pointer',
+                    }}
+                    onClick={e => isCurrent && e.preventDefault()}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13, color: '#e2e8f0', fontFamily: 'ui-monospace, monospace' }}>{h.domain}</div>
+                      <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>by {h.hoster}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, color: isCurrent ? '#38bdf8' : '#6366f1',
+                        background: isCurrent ? 'rgba(56,189,248,0.12)' : 'rgba(99,102,241,0.12)',
+                        borderRadius: 10, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.05em',
+                      }}>
+                        {isCurrent ? 'current' : h.label}
+                      </span>
+                    </div>
+                  </a>
+                )
+              })}
+              {allHosts.length === 0 && (
+                <div style={{ fontSize: 12, color: '#475569', padding: '8px 10px' }}>No certified hosts found.</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
