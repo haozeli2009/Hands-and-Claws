@@ -81,6 +81,17 @@ LLM_KEY_ENCRYPTION_KEY=<run: python3 -c 'from cryptography.fernet import Fernet;
 DASHBOARD_PASS=<something secure>
 ```
 
+### HTTPS (recommended for production)
+
+After running the setup script, install a free TLS certificate with Certbot:
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+Certbot will update the nginx config automatically and set up HTTP → HTTPS redirect. Certificates renew automatically via a systemd timer.
+
 ### Manual setup
 
 **Prerequisites:** Python 3.12, Node.js (LTS), an Anthropic or OpenAI API key.
