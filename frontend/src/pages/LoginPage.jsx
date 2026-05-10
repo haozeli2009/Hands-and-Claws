@@ -137,6 +137,7 @@ export default function LoginPage() {
       }}>
         <a href="https://github.com/haozeli2009/Hands-and-Claws" target="_blank" rel="noreferrer"
           style={{
+            position: 'absolute', top: 16, left: 20, zIndex: 10,
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.10)',
