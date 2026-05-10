@@ -79,6 +79,10 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 
 echo ""
+echo " To enable HTTPS (recommended):"
+echo "   sudo apt-get install -y certbot python3-certbot-nginx"
+echo "   sudo certbot --nginx -d yourdomain.com"
+echo ""
 echo "============================================"
 echo " Setup complete!"
 echo "============================================"
