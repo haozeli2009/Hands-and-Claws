@@ -12,6 +12,7 @@ backend/logs/
 .env.*
 !.env.example
 !backend/.env.example
+*.pem
 
 # Frontend build
 frontend/dist/
