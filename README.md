@@ -64,6 +64,24 @@ Supply UIDs and names never appear in LLM prompts — the Orchestrator ranks `Ca
 
 ## Getting started
 
+### Ubuntu 24.04 (recommended)
+
+```bash
+git clone https://github.com/haozeli2009/Hands-and-Claws.git
+cd Hands-and-Claws
+bash ops/setup_ubuntu24.sh
+```
+
+The script installs all system dependencies (Python 3.12, Node, nginx), creates the virtualenv, builds the frontend, and registers the systemd service. It will pause and ask you to fill in `backend/.env` before continuing — you need at minimum:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+JWT_SECRET=<run: python3 -c 'import secrets; print(secrets.token_hex(32))'>
+DASHBOARD_PASS=<something secure>
+```
+
+### Manual setup
+
 **Prerequisites:** Python 3.12, Node.js (LTS), an Anthropic or OpenAI API key.
 
 ```bash
@@ -73,10 +91,10 @@ cd Hands-and-Claws
 
 # Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # fill in API keys and secrets
-python main.py              # listens on http://localhost:8000
+python3.12 main.py          # listens on http://localhost:8000
 
 # Frontend (separate terminal)
 cd frontend
@@ -87,7 +105,7 @@ npm install && npm run build
 ### Seed test data
 
 ```bash
-cd backend && python seed_testusers.py
+cd backend && .venv/bin/python seed_testusers.py
 ```
 
 Creates 18 accounts (password: `testpass123`) spanning ML, design, DevOps, finance, blockchain, and more.
@@ -95,7 +113,7 @@ Creates 18 accounts (password: `testpass123`) spanning ML, design, DevOps, finan
 ### End-to-end test
 
 ```bash
-python test_matching.py --scenario 1   # scenarios 1–5
+.venv/bin/python test_matching.py --scenario 1   # scenarios 1–5
 ```
 
 Opens a demand session and up to 16 supply sessions over WebSocket, fires a realistic request, auto-accepts all consent prompts, and prints the full pipeline trace. The LLM ranking step takes 60–90 s with extended thinking enabled.
