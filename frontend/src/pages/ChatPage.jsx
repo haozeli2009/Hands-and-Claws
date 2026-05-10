@@ -52,7 +52,7 @@ function SettingsMenu({ onNavigate, onLogout, T }) {
     { label: 'Tour',        action: () => onNavigate('/onboarding') },
     { label: 'Profile',     action: () => onNavigate('/profile') },
     { label: 'LLM',         action: () => onNavigate('/llm') },
-    { label: 'OpenClaw',    action: () => onNavigate('/integrations') },
+    { label: 'Integrations', action: () => onNavigate('/integrations') },
     { label: 'Agent Monitor', action: () => onNavigate('/cli') },
     { label: 'Workflow',    action: () => onNavigate('/workflow') },
     null,

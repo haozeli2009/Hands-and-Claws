@@ -178,7 +178,7 @@ export default function IntegrationsPage() {
     <div style={S.page}>
       <div style={S.hdr}>
         <button style={S.back} onClick={() => navigate(-1)}>← Back</button>
-        <h1 style={S.h1}>Connect OpenClaw</h1>
+        <h1 style={S.h1}>Integrations</h1>
       </div>
 
       <p style={S.sub}>
