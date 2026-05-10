@@ -83,7 +83,7 @@ async def github_app_start(request: Request) -> RedirectResponse:
         f"https://github.com/apps/{Config.GITHUB_APP_NAME}/installations/new"
         f"?state={urllib.parse.quote(state)}"
     )
-    resp = RedirectResponse(install_url, status_code=302)
+    resp = JSONResponse({"url": install_url})
     resp.set_cookie(
         _STATE_COOKIE, state, max_age=_STATE_MAX_AGE,
         httponly=True, samesite="lax", path="/",

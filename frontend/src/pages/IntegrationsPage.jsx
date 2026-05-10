@@ -319,21 +319,30 @@ export default function IntegrationsPage() {
                 No GitHub App installed yet. Click below to install it on your GitHub account
                 and select which repos to connect.
               </p>
-              <a
-                href="/api/github/app/start"
+              <button
+                onClick={async () => {
+                  const res = await fetch('/api/github/app/start', {
+                    headers: { Authorization: `Bearer ${authToken}` },
+                    credentials: 'include',
+                  })
+                  if (res.ok) {
+                    const { url } = await res.json()
+                    window.location.href = url
+                  }
+                }}
                 style={{
-                  display: 'inline-block',
                   background: '#24292f',
                   color: '#fff',
+                  border: 'none',
                   borderRadius: 6,
                   padding: '8px 18px',
                   fontSize: 13,
                   fontWeight: 500,
-                  textDecoration: 'none',
+                  cursor: 'pointer',
                 }}
               >
                 Install GitHub App
-              </a>
+              </button>
             </>
           ) : (
             <>
