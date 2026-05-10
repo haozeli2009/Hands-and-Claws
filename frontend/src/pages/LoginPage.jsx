@@ -321,8 +321,8 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* Demo link */}
-        <div style={{ marginTop: 40, position: 'relative' }}>
+        {/* Demo link + privacy */}
+        <div style={{ marginTop: 40, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <a
             href="https://handsandclaws.haozeli2009.com"
             target="_blank" rel="noreferrer"
@@ -330,6 +330,9 @@ export default function LoginPage() {
           >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block', boxShadow: '0 0 6px #4ade80' }} />
             Live demo — handsandclaws.haozeli2009.com
+          </a>
+          <a href="/privacy" style={{ fontSize: 12, color: '#475569', textDecoration: 'none' }}>
+            Privacy Policy
           </a>
         </div>
       </div>

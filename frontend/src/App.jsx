@@ -10,6 +10,7 @@ import LlmSettingsPage from './pages/LlmSettingsPage'
 import BoardingPage from './pages/BoardingPage'
 import CliPage        from './pages/CliPage'
 import WorkflowPage   from './pages/WorkflowPage'
+import PrivacyPage    from './pages/PrivacyPage'
 
 function Protected({ children }) {
   const token = useAuthStore(s => s.token)
@@ -19,6 +20,7 @@ function Protected({ children }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/privacy"  element={<PrivacyPage />} />
       <Route path="/login"    element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/onboarding" element={<Protected><BoardingPage /></Protected>} />
