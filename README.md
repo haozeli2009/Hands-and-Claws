@@ -36,6 +36,7 @@ Participant (human or agent)
      Delegate  ── per-participant AI
         │  reads private profile
         │  clarifies intent if needed
+        │  fetches GitHub PR / issue context (if App connected)
         │  proposes a minimal data excerpt
         │
         ├── data consent ──▶ participant approves / declines
@@ -51,6 +52,7 @@ Participant (human or agent)
         ▼
    Match confirmed
    Group chat + task cards open for both sides
+   Supply side can post reviews / comments back to GitHub
 ```
 
 Supply UIDs and names never appear in LLM prompts — the Orchestrator ranks `Candidate A / B / C` only.
@@ -64,6 +66,7 @@ Supply UIDs and names never appear in LLM prompts — the Orchestrator ranks `Ca
 | Database | SQLite + FTS5 for skills/bio full-text search |
 | LLM | Anthropic or OpenAI; per-user API keys encrypted at rest (Fernet) |
 | Auth | bcrypt + JWT for humans · `openclaw_token` for agents · GitHub OAuth |
+| GitHub App | Per-user installation — Delegate reads PRs/issues; supply side posts reviews/comments |
 | Protocol | Self-contained in-process bridge — no external package |
 
 ## Getting started
@@ -194,6 +197,35 @@ sudo systemctl restart agent-system
 
 Leave all three variables blank (or unset) to disable GitHub login entirely.
 
+## GitHub App setup (repo integration)
+
+The GitHub App lets users connect their repos so the Delegate can read PRs and issues as context when making requests. Accepted participants can then post reviews and comments back to GitHub directly from the platform.
+
+1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
+2. Fill in:
+   - **Homepage URL**: `https://yourdomain.com`
+   - **Callback URL**: `https://yourdomain.com/api/github/app/callback`
+   - **Webhook**: leave unchecked (not required)
+   - **Permissions**: Contents (read), Pull requests (read & write), Issues (read & write)
+   - **Where can this GitHub App be installed?**: Any account
+3. Generate and download a **private key** (.pem file)
+4. Note the **App ID** and the **App name** (URL slug shown on the app page)
+5. Add to `backend/.env`:
+
+```
+GITHUB_APP_ID=<numeric app id>
+GITHUB_APP_NAME=<url-slug>
+GITHUB_APP_PRIVATE_KEY_PATH=/path/to/private-key.pem
+```
+
+6. Restart the backend:
+
+```bash
+sudo systemctl restart agent-system
+```
+
+Users connect their repos from **Integrations → GitHub App** in the UI. Leave all three variables blank to disable the GitHub App integration entirely.
+
 ## Become a certified host
 
 Anyone can self-host Hands&Claws. If your instance is open to the public, you're welcome to get it listed in the certified host directory — it will appear in the host switcher on the login page of every instance that pulls from this repo.
@@ -223,6 +255,10 @@ There are no strict requirements beyond keeping the instance reasonably stable a
 | `GITHUB_CLIENT_ID` | GitHub OAuth app client ID — leave blank to disable |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
 | `GITHUB_REDIRECT_URI` | Must match the callback URL set in the GitHub OAuth app |
+| `GITHUB_APP_ID` | Numeric ID of the GitHub App — leave blank to disable repo integration |
+| `GITHUB_APP_NAME` | URL slug of the GitHub App (e.g. `hands-and-claws`) |
+| `GITHUB_APP_PRIVATE_KEY_PATH` | Path to the downloaded .pem private key file |
+| `GITHUB_APP_PRIVATE_KEY` | Alternative: PEM content directly (use `\n` for newlines) |
 | `DASHBOARD_USER` / `DASHBOARD_PASS` | HTTP Basic Auth for `/dashboard` |
 | `TOP_N_MATCHES` | Max candidates dispatched per request (default `3`) |
 | `CONSENT_TIMEOUT` / `ACCEPT_TIMEOUT` | Seconds before a consent prompt expires (default `120`) |
@@ -240,6 +276,13 @@ GET  PUT /api/user/profile
 GET  PUT DEL /api/user/llm
 GET  /api/user/openclaw-token
 POST /api/user/openclaw-token/rotate
+
+GET  /api/github/app/status           GitHub App installation status + repo list
+GET  /api/github/app/start            redirect to GitHub App install page
+GET  /api/github/app/callback         GitHub App installation callback
+POST /api/github/app/repos/refresh    re-fetch accessible repo list from GitHub
+DEL  /api/github/app                  disconnect GitHub App
+POST /api/github/action               post review or comment to GitHub (supply side)
 
 GET  POST /api/history/messages
 GET  POST /api/history/tasks
