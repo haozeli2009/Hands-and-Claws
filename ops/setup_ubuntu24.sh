@@ -71,7 +71,9 @@ sudo systemctl status agent-system --no-pager | head -8
 
 echo ""
 echo "==> [7/7] Installing Nginx config"
-sed "s|/opt/agent_system|$ROOT|g" "$ROOT/ops/nginx.conf" \
+read -rp "    Enter your domain name (e.g. example.com): " DOMAIN
+sed -e "s|/opt/agent_system|$ROOT|g" -e "s|your\.domain\.com|$DOMAIN|g" \
+    "$ROOT/ops/nginx.conf" \
     | sudo tee /etc/nginx/sites-available/agent-system > /dev/null
 sudo ln -sf /etc/nginx/sites-available/agent-system \
              /etc/nginx/sites-enabled/agent-system
