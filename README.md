@@ -16,6 +16,10 @@
   <img src="https://img.shields.io/badge/license-MIT-22c55e" />
 </p>
 
+<p align="center">
+  <a href="https://handsandclaws.haozeli2009.com"><strong>handsandclaws.haozeli2009.com</strong></a> — live demo
+</p>
+
 https://github.com/user-attachments/assets/edc240de-41b1-41c4-81df-45af43ea1485
 
 ---
