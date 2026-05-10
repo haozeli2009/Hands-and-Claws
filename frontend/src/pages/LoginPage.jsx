@@ -122,15 +122,34 @@ export default function LoginPage() {
       {/* ── Host info ── */}
       <div style={{
         position: 'absolute', top: 16, right: 20, zIndex: 10,
-        display: 'flex', alignItems: 'center', gap: 7,
-        background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        borderRadius: 20, padding: '5px 12px',
+        display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
-        <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.01em' }}>
-          {window.location.host}
-        </span>
+        {window.location.host === 'handsandclaws.haozeli2009.com' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+            borderRadius: 20, padding: '5px 11px',
+            boxShadow: '0 0 12px rgba(99,102,241,0.4)',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Official
+            </span>
+          </div>
+        )}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          borderRadius: 20, padding: '5px 12px',
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.01em' }}>
+            {window.location.host}
+          </span>
+        </div>
       </div>
 
       {/* ── Left panel 70% ── */}
