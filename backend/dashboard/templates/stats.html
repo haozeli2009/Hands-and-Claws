@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}User stats{% endblock %}
+{% block content %}
+<h1>User stats</h1>
+<table>
+  <thead>
+    <tr>
+      <th>UID</th>
+      <th>Matches dispatched</th>
+      <th>Accepted</th>
+      <th>Declined</th>
+      <th>Accept rate</th>
+      <th>Consents given</th>
+      <th>Consents declined</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.uid }}</td>
+      <td>{{ r.match_dispatched }}</td>
+      <td style="color:#166534">{{ r.supply_accepted }}</td>
+      <td style="color:#991b1b">{{ r.supply_declined }}</td>
+      <td>
+        {% if r.accept_rate >= 70 %}<span class="pill pill-green">{{ r.accept_rate }}%</span>
+        {% elif r.accept_rate >= 40 %}<span class="pill pill-gray">{{ r.accept_rate }}%</span>
+        {% else %}<span class="pill pill-red">{{ r.accept_rate }}%</span>{% endif %}
+      </td>
+      <td>{{ r.consent_given }}</td>
+      <td>{{ r.consent_declined }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" style="color:#888;text-align:center;padding:20px">No data yet</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

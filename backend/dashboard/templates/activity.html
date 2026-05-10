@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Live activity{% endblock %}
+{% block content %}
+<h1>Live activity</h1>
+<p class="refresh">Auto-refreshes every 5 seconds</p>
+<meta http-equiv="refresh" content="5">
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Active conversations</div>
+    <div class="value">{{ data.active_cids }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Pending futures</div>
+    <div class="value">{{ data.pending_futures }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Connected users</div>
+    <div class="value">{{ data.connected_users }}</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Event</th>
+      <th>UID</th>
+      <th>CID (prefix)</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for e in data.recent_events %}
+    <tr>
+      <td>{{ e.ts[11:19] }}</td>
+      <td>
+        {% if e.type == 'supply_accepted' %}<span class="pill pill-green">{{ e.type }}</span>
+        {% elif e.type in ['consent_declined', 'supply_declined'] %}<span class="pill pill-red">{{ e.type }}</span>
+        {% else %}<span class="pill pill-gray">{{ e.type }}</span>{% endif %}
+      </td>
+      <td>{{ e.uid }}</td>
+      <td style="font-family:monospace">{{ e.cid }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4" style="color:#888;text-align:center;padding:20px">No events yet</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

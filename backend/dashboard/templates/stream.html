@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% set active = 'stream' %}
+{% block title %}De-identified stream{% endblock %}
+{% block content %}
+<style>
+#stream-wrap{max-height:70vh;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px;background:#fff}
+#stream-wrap table{border:none;border-radius:0}
+#stream-wrap th{position:sticky;top:0;z-index:1}
+.skills-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#conn-status{margin-left:10px;vertical-align:middle}
+</style>
+
+<h1>
+  De-identified stream
+  <span id="conn-status" class="pill pill-gray">● connecting…</span>
+</h1>
+<p class="refresh">Live push — no names, bios, emails, or message content shown</p>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Events received</div>
+    <div class="value" id="ev-count">0</div>
+  </div>
+  <div class="card">
+    <div class="label">Distinct UIDs seen</div>
+    <div class="value" id="uid-count">0</div>
+  </div>
+</div>
+
+<div id="stream-wrap">
+  <table id="stream-table">
+    <thead>
+      <tr>
+        <th>Time (UTC)</th>
+        <th>Event</th>
+        <th>UID</th>
+        <th>CID prefix</th>
+        <th>Participant</th>
+        <th>Skills</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody id="stream-body">
+      <tr id="empty-row">
+        <td colspan="7" style="color:#888;text-align:center;padding:24px">
+          Waiting for events…
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const TYPE_PILL = {
+  demand_received:  'pill-blue',
+  consent_given:    'pill-teal',
+  consent_declined: 'pill-red',
+  match_dispatched: 'pill-yellow',
+  supply_accepted:  'pill-green',
+  supply_declined:  'pill-red',
+  task_finished:    'pill-gray',
+};
+
+const MAX_ROWS = 300;
+let evCount = 0;
+const seenUids = new Set();
+
+const tbody     = document.getElementById('stream-body');
+const evCountEl = document.getElementById('ev-count');
+const uidCountEl= document.getElementById('uid-count');
+const statusEl  = document.getElementById('conn-status');
+const wrap      = document.getElementById('stream-wrap');
+const emptyRow  = document.getElementById('empty-row');
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function addRow(ev) {
+  if (emptyRow) emptyRow.remove();
+
+  evCount++;
+  evCountEl.textContent = evCount;
+
+  if (ev.uid != null) {
+    seenUids.add(ev.uid);
+    uidCountEl.textContent = seenUids.size;
+  }
+
+  const pillClass = TYPE_PILL[ev.type] || 'pill-gray';
+
+  const pt = ev.participant_type;
+  const ptCell = pt === 'agent'
+    ? '<span class="pill pill-blue">agent</span>'
+    : pt === 'human'
+      ? '<span class="pill pill-gray">human</span>'
+      : '<span style="color:#aaa">—</span>';
+
+  const skills = ev.skills || '';
+  const skillsShort = skills.length > 40 ? skills.slice(0, 40) + '…' : skills;
+  const skillsCell = skills
+    ? `<span title="${esc(skills)}">${esc(skillsShort)}</span>`
+    : '<span style="color:#aaa">—</span>';
+
+  const loc = ev.location
+    ? esc(ev.location)
+    : '<span style="color:#aaa">—</span>';
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="white-space:nowrap">${esc(ev.ts.slice(11,19))}</td>
+    <td><span class="pill ${pillClass}">${esc(ev.type)}</span></td>
+    <td>${ev.uid ?? '—'}</td>
+    <td style="font-family:monospace">${esc(ev.cid)}</td>
+    <td>${ptCell}</td>
+    <td class="skills-cell">${skillsCell}</td>
+    <td>${loc}</td>
+  `;
+  tbody.appendChild(tr);
+
+  // trim oldest rows beyond limit
+  while (tbody.children.length > MAX_ROWS) {
+    tbody.removeChild(tbody.firstChild);
+  }
+
+  // auto-scroll to bottom if already near the bottom
+  const nearBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 80;
+  if (nearBottom) wrap.scrollTop = wrap.scrollHeight;
+}
+
+const source = new EventSource('/dashboard/stream/events');
+
+source.onopen = function() {
+  statusEl.className = 'pill pill-green';
+  statusEl.textContent = '● connected';
+};
+
+source.onerror = function() {
+  statusEl.className = 'pill pill-red';
+  statusEl.textContent = '● reconnecting…';
+};
+
+source.onmessage = function(e) {
+  try { addRow(JSON.parse(e.data)); } catch(_) {}
+};
+</script>
+{% endblock %}

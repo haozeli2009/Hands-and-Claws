@@ -35,3 +35,4 @@ chathistory.md
 *.pdf
 *.html
 !frontend/index.html
+!backend/dashboard/templates/*.html
