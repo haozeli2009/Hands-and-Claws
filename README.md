@@ -194,6 +194,22 @@ sudo systemctl restart agent-system
 
 Leave all three variables blank (or unset) to disable GitHub login entirely.
 
+## Become a certified host
+
+Anyone can self-host Hands&Claws. If your instance is open to the public, you're welcome to get it listed in the certified host directory — it will appear in the host switcher on the login page of every instance that pulls from this repo.
+
+**To apply**, open a pull request that adds your entry to [`frontend/public/certified-hosts.json`](frontend/public/certified-hosts.json):
+
+```json
+{
+  "domain": "your.domain.com",
+  "hoster": "your-github-username",
+  "label": "Community"
+}
+```
+
+There are no strict requirements beyond keeping the instance reasonably stable and publicly accessible. The `label` field is yours to choose — `"Community"`, `"University"`, `"Research"`, etc.
+
 ## Configuration
 
 | Key | Description |
