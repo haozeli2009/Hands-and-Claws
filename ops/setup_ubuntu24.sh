@@ -56,6 +56,10 @@ fi
 
 echo ""
 echo "==> [6/7] Installing systemd service"
+# If repo is cloned under /root, nginx (www-data) can't traverse it — open execute bit
+if [[ "$ROOT" == /root* ]]; then
+    chmod 755 /root
+fi
 # Patch the service file with the actual path
 sed "s|/opt/agent_system|$ROOT|g" "$ROOT/ops/agent-system.service" \
     | sudo tee /etc/systemd/system/agent-system.service > /dev/null
