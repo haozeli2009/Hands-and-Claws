@@ -346,6 +346,13 @@ Your job:
         if installation is None:
             return "(GitHub App not connected)"
 
+        label = "PR" if resource_type == "pr" else "issue"
+        await self.protocol.send_pipeline_step(
+            self._cid, self.uid, "github",
+            f"Reading {label} #{number} from {repo}", "",
+            "active",
+        )
+
         try:
             token, _ = await gh_client.get_installation_token(installation.installation_id)
             if resource_type == "pr":
@@ -354,8 +361,16 @@ Your job:
                 ctx = await gh_client.get_issue(token, owner, repo_name, number)
         except Exception as exc:
             logger.warning("fetch_github_context failed: %s", exc)
+            await self.protocol.send_pipeline_step(
+                self._cid, self.uid, "github",
+                f"Failed to read {label} #{number}", "", "error",
+            )
             return f"(failed to fetch GitHub context: {exc})"
 
+        await self.protocol.send_pipeline_step(
+            self._cid, self.uid, "github",
+            f"{label.capitalize()} #{number} fetched from {repo}", "", "done",
+        )
         self._github_context = ctx
 
         # Return a human-readable summary for the LLM to include in data_excerpt
