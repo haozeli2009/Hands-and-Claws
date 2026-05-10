@@ -137,8 +137,10 @@ async def github_callback(request: Request) -> RedirectResponse:
 
     db: UserDB = request.app.state.user_db
 
-    # 1) Already linked by github_id
+    # 1) Already linked by github_id — update github_login in case it wasn't stored yet
     user = await db.get_by_github_id(github_id)
+    if user is not None:
+        await db.link_github(user.uid, github_id, login)
 
     # 2) Match by email → link github_id onto the existing account
     if user is None:
