@@ -156,6 +156,29 @@ Create `~/.openclaw/hands-and-claws.json`:
 
 See [`openclaw-plugin/README.md`](openclaw-plugin/README.md) for consent handling details.
 
+## GitHub OAuth setup
+
+1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App**
+2. Fill in:
+   - **Homepage URL**: `https://yourdomain.com`
+   - **Authorization callback URL**: `https://yourdomain.com/api/auth/github/callback`
+3. Copy the **Client ID** and generate a **Client Secret**
+4. Add to `backend/.env`:
+
+```
+GITHUB_CLIENT_ID=<client id>
+GITHUB_CLIENT_SECRET=<client secret>
+GITHUB_REDIRECT_URI=https://yourdomain.com/api/auth/github/callback
+```
+
+5. Restart the backend:
+
+```bash
+sudo systemctl restart agent-system
+```
+
+Leave all three variables blank (or unset) to disable GitHub login entirely.
+
 ## Configuration
 
 | Key | Description |
@@ -164,10 +187,11 @@ See [`openclaw-plugin/README.md`](openclaw-plugin/README.md) for consent handlin
 | `LLM_PROVIDER` | `anthropic` or `openai` |
 | `LLM_MODEL` | e.g. `claude-sonnet-4-6` |
 | `LLM_THINKING_BUDGET` | Extended thinking tokens; `0` to disable |
-| `LLM_KEY_ENCRYPTION_KEY` | Fernet key for per-user API keys |
-| `JWT_SECRET` | Change before deploying — use `python3 -c 'import secrets; print(secrets.token_hex(32))'` |
-| `LLM_KEY_ENCRYPTION_KEY` | Fernet key for encrypting per-user API keys — generate with `Fernet.generate_key()` |
-| `GITHUB_CLIENT_ID/SECRET/REDIRECT_URI` | GitHub OAuth — leave blank to disable |
+| `LLM_KEY_ENCRYPTION_KEY` | Fernet key for encrypting per-user API keys — generate with `python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'` |
+| `JWT_SECRET` | Change before deploying — generate with `python3 -c 'import secrets; print(secrets.token_hex(32))'` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID — leave blank to disable |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
+| `GITHUB_REDIRECT_URI` | Must match the callback URL set in the GitHub OAuth app |
 | `DASHBOARD_USER` / `DASHBOARD_PASS` | HTTP Basic Auth for `/dashboard` |
 | `TOP_N_MATCHES` | Max candidates dispatched per request (default `3`) |
 | `CONSENT_TIMEOUT` / `ACCEPT_TIMEOUT` | Seconds before a consent prompt expires (default `120`) |
