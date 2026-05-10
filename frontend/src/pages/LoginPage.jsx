@@ -72,6 +72,7 @@ export default function LoginPage() {
   const [error, setError]         = useState('')
   const [loading, setLoading]     = useState(false)
   const [providers, setProviders] = useState({ github: false })
+  const [certifiedHost, setCertifiedHost] = useState(null)
 
   useEffect(() => {
     if (window.location.hash && window.location.hash.length > 1) {
@@ -101,6 +102,16 @@ export default function LoginPage() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    fetch('/certified-hosts.json')
+      .then(r => r.ok ? r.json() : [])
+      .then(list => {
+        const match = list.find(h => h.domain === window.location.host)
+        if (match) setCertifiedHost(match)
+      })
+      .catch(() => {})
+  }, [])
+
   async function submit(e) {
     e.preventDefault()
     setError('')
@@ -124,7 +135,7 @@ export default function LoginPage() {
         position: 'absolute', top: 16, right: 20, zIndex: 10,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        {window.location.host === 'handsandclaws.haozeli2009.com' && (
+        {certifiedHost && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 5,
             background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
@@ -135,7 +146,7 @@ export default function LoginPage() {
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Official
+              {certifiedHost?.label ?? 'Certified'}
             </span>
           </div>
         )}
