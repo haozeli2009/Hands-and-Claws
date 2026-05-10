@@ -50,6 +50,11 @@ class Config:
     GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
     GITHUB_REDIRECT_URI  = os.environ.get("GITHUB_REDIRECT_URI", "")
 
+    # --- GitHub Marketplace webhook ---
+    # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+    # Paste the same value into the GitHub Marketplace webhook "Secret" field.
+    GITHUB_MARKETPLACE_WEBHOOK_SECRET = os.environ.get("GITHUB_MARKETPLACE_WEBHOOK_SECRET", "")
+
     # --- GitHub App (repo integration) ---
     # Create a GitHub App at https://github.com/settings/apps
     # Required permissions: Contents (read), Pull requests (read+write), Issues (read+write)
