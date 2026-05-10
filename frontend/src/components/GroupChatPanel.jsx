@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { useResizable, resizeHandleStyle, onHandleHoverIn, onHandleHoverOut } from '../hooks/useResizable'
 import { useTheme } from '../hooks/useTheme'
 import OperatorDot from './OperatorDot'
+import { GitHubPostForm } from './GitHubPostForm'
 
 function formatTs(ts) {
   const d = new Date(ts)
@@ -495,6 +496,13 @@ export default function GroupChatPanel({ send }) {
           flexDirection: 'column',
         }}>
           <InfoPanel task={task} myUid={myUid} />
+        </div>
+      )}
+
+      {/* GitHub post form — supply side only */}
+      {task?.role === 'supply' && task?.github_ref && (
+        <div style={{ borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
+          <GitHubPostForm ref={task.github_ref} cid={task.card_id} />
         </div>
       )}
 
