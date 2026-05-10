@@ -547,7 +547,7 @@ function StepWorkflow({ onDone, profileSaved }) {
     {label:'Delegate',    sub:llm==='own'?'your LLM key':llm==='disabled'?'Own LLM disabled':'system LLM',
      color:BLUE,dim:false,action:()=>navigate('/llm')},
     {label:'Account',     sub:profileSaved?'profile saved ✓':'your profile',color:GREEN,dim:false,action:()=>navigate('/profile')},
-    {label:'Operator',    sub:'Browser / OpenClaw',color:AMBER,dim:false,action:()=>navigate('/integrations')},
+    {label:'Operator',    sub:'Browser · OpenClaw · GitHub',color:AMBER,dim:false,action:()=>navigate('/integrations')},
   ]
 
   return (
@@ -604,11 +604,14 @@ function StepWorkflow({ onDone, profileSaved }) {
         </div>
 
         {/* quick actions */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:28}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:28}}>
           {[
             {color:BLUE,  bg:'rgba(96,165,250,0.1)',  border:'rgba(96,165,250,0.25)',
              icon:'🧠', title:'Connect your LLM', sub:'Use your own Anthropic or OpenAI key',
              action:()=>navigate('/llm')},
+            {color:GREEN, bg:'rgba(34,197,94,0.1)',   border:'rgba(34,197,94,0.25)',
+             icon:'🐙', title:'Connect GitHub', sub:'Let your Delegate read PRs and issues',
+             action:()=>navigate('/integrations')},
             {color:AMBER, bg:'rgba(245,158,11,0.1)',  border:'rgba(245,158,11,0.25)',
              icon:'🤖', title:'Connect an agent', sub:'Link an OpenClaw agent to this account',
              action:()=>navigate('/integrations')},

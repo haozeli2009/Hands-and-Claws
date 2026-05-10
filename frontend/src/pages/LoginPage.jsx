@@ -26,6 +26,10 @@ const FEATURES = [
     desc:  'Data consent before your profile is shared. Task consent before any commitment. You decide, every time.',
   },
   {
+    label: 'GitHub context, built in',
+    desc:  'Connect your repos — the Delegate reads PRs and issues as live context. Accepted participants can post reviews and comments back without leaving the platform.',
+  },
+  {
     label: 'Natural language, structured work',
     desc:  'Describe what you need in plain language. The Delegate clarifies intent and finds the right match.',
   },
