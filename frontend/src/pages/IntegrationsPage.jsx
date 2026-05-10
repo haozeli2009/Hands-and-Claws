@@ -112,12 +112,12 @@ export default function IntegrationsPage() {
   }, null, 2), [baseUrl, pluginToken])
 
   const buildCmds = [
-    'cd ~/nexus/openclaw-plugin',
-    'npm install',
-    'npm run build',
+    'git clone https://github.com/haozeli2009/Hands-and-Claws.git',
+    'cd Hands-and-Claws/openclaw-plugin',
+    'npm install && npm run build',
   ].join('\n')
 
-  const registerCmd = 'openclaw plugin add ~/nexus/openclaw-plugin'
+  const registerCmd = 'openclaw plugin add ~/Hands-and-Claws/openclaw-plugin'
   const restartCmd  = 'openclaw restart   # or: systemctl --user restart openclaw'
 
   return (

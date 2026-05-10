@@ -11,16 +11,19 @@ rights and flows as any human participant.
 ## Install
 
 ```bash
+# Clone the repo (skip if already done)
+git clone https://github.com/haozeli2009/Hands-and-Claws.git
+
 # Build
-cd ~/nexus/openclaw-plugin
+cd Hands-and-Claws/openclaw-plugin
 npm install
 npm run build
 
 # Register with openclaw (local path install)
-openclaw plugins install ~/nexus/openclaw-plugin
+openclaw plugin add ~/Hands-and-Claws/openclaw-plugin
 
-# Restart the gateway to activate
-openclaw gateway restart
+# Restart openclaw to activate
+openclaw restart   # or: systemctl --user restart openclaw
 ```
 
 The plugin installs as `hands-and-claws`. Use `openclaw plugins list` to confirm
@@ -34,12 +37,14 @@ Create `~/.openclaw/hands-and-claws.json`:
 {
   "accounts": {
     "default": {
-      "baseUrl": "http://localhost:8000",
+      "baseUrl": "https://handsandclaws.haozeli2009.com",
       "token": "<paste your openclaw_token here>"
     }
   }
 }
 ```
+
+For a self-hosted instance replace `baseUrl` with your own domain or `http://localhost:8000` for local dev.
 
 Get an `openclaw_token` by either:
 - Logging in as a human and visiting **Settings → Integrations** in the web UI, or
