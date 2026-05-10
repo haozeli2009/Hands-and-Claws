@@ -145,7 +145,7 @@ async def github_callback(request: Request) -> RedirectResponse:
         matched = await db.get_by_email(email)
         if matched is not None:
             user, _hash = matched
-            await db.link_github(user.uid, github_id)
+            await db.link_github(user.uid, github_id, login)
             logger.info("Linked GitHub id=%s to existing uid=%d", github_id, user.uid)
 
     # 3) Fresh user
@@ -153,7 +153,7 @@ async def github_callback(request: Request) -> RedirectResponse:
         username = await _unique_username(db, login)
         try:
             uid = await db.insert_github_user(
-                username, email, github_id, unusable_password_hash(),
+                username, email, github_id, unusable_password_hash(), login,
             )
         except Exception:
             logger.exception("Failed to create GitHub user login=%s", login)

@@ -104,6 +104,8 @@ class UserDB:
                 await db.execute(
                     "ALTER TABLE users ADD COLUMN participant_type TEXT NOT NULL DEFAULT 'human'"
                 )
+            if "github_login" not in ucols:
+                await db.execute("ALTER TABLE users ADD COLUMN github_login TEXT")
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS profiles (
                     uid          INTEGER PRIMARY KEY REFERENCES users(uid),
@@ -244,6 +246,14 @@ class UserDB:
                     row["uid"], row["username"], row["email"], row["participant_type"]
                 )
 
+    async def get_github_login(self, uid: int) -> str | None:
+        async with aiosqlite.connect(self._path) as db:
+            async with db.execute(
+                "SELECT github_login FROM users WHERE uid = ?", (uid,)
+            ) as cur:
+                row = await cur.fetchone()
+                return row[0] if row else None
+
     async def get_by_github_id(self, github_id: str) -> UserRow | None:
         async with aiosqlite.connect(self._path) as db:
             db.row_factory = aiosqlite.Row
@@ -256,23 +266,24 @@ class UserDB:
                     row["uid"], row["username"], row["email"], row["participant_type"]
                 )
 
-    async def link_github(self, uid: int, github_id: str) -> None:
+    async def link_github(self, uid: int, github_id: str, github_login: str = "") -> None:
         async with aiosqlite.connect(self._path) as db:
             await db.execute(
-                "UPDATE users SET github_id = ? WHERE uid = ?",
-                (github_id, uid),
+                "UPDATE users SET github_id = ?, github_login = ? WHERE uid = ?",
+                (github_id, github_login or None, uid),
             )
             await db.commit()
 
     async def insert_github_user(self, username: str, email: str,
-                                  github_id: str, unusable_hash: str) -> int:
+                                  github_id: str, unusable_hash: str,
+                                  github_login: str = "") -> int:
         """Create a user who signs in via GitHub only (no password)."""
         now = datetime.now(timezone.utc).isoformat()
         async with aiosqlite.connect(self._path) as db:
             cur = await db.execute(
-                """INSERT INTO users (username, email, hashed_password, created_at, github_id)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (username, email, unusable_hash, now, github_id),
+                """INSERT INTO users (username, email, hashed_password, created_at, github_id, github_login)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (username, email, unusable_hash, now, github_id, github_login or None),
             )
             uid = cur.lastrowid
             await db.execute(

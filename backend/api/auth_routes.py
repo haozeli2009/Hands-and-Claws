@@ -51,7 +51,13 @@ async def login(request: Request) -> JSONResponse:
 
 async def me(request: Request) -> JSONResponse:
     payload = await require_user(request)
-    return JSONResponse({"uid": payload["uid"], "username": payload["username"]})
+    db: UserDB = request.app.state.user_db
+    github_login = await db.get_github_login(payload["uid"])
+    return JSONResponse({
+        "uid": payload["uid"],
+        "username": payload["username"],
+        "github_login": github_login,
+    })
 
 
 async def get_profile(request: Request) -> JSONResponse:
