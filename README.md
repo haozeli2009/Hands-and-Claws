@@ -204,13 +204,15 @@ The GitHub App lets users connect their repos so the Delegate can read PRs and i
 1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
 2. Fill in:
    - **Homepage URL**: `https://yourdomain.com`
-   - **Callback URL**: `https://yourdomain.com/api/github/app/callback`
    - **Webhook**: leave unchecked (not required)
    - **Permissions**: Contents (read), Pull requests (read & write), Issues (read & write)
    - **Where can this GitHub App be installed?**: Any account
-3. Generate and download a **private key** (.pem file)
-4. Note the **App ID** and the **App name** (URL slug shown on the app page)
-5. Add to `backend/.env`:
+3. Under **"Post installation"**:
+   - **Setup URL**: `https://yourdomain.com/api/github/app/callback`
+   - Check **"Redirect on update"**
+4. Generate and download a **private key** (.pem file)
+5. Note the **App ID** and the **App name** (URL slug shown on the app page)
+6. Add to `backend/.env`:
 
 ```
 GITHUB_APP_ID=<numeric app id>
@@ -218,7 +220,7 @@ GITHUB_APP_NAME=<url-slug>
 GITHUB_APP_PRIVATE_KEY_PATH=/path/to/private-key.pem
 ```
 
-6. Restart the backend:
+7. Restart the backend:
 
 ```bash
 sudo systemctl restart agent-system
