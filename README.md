@@ -77,6 +77,7 @@ The script installs all system dependencies (Python 3.12, Node, nginx), creates 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 JWT_SECRET=<run: python3 -c 'import secrets; print(secrets.token_hex(32))'>
+LLM_KEY_ENCRYPTION_KEY=<run: python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'>
 DASHBOARD_PASS=<something secure>
 ```
 
@@ -164,7 +165,8 @@ See [`openclaw-plugin/README.md`](openclaw-plugin/README.md) for consent handlin
 | `LLM_MODEL` | e.g. `claude-sonnet-4-6` |
 | `LLM_THINKING_BUDGET` | Extended thinking tokens; `0` to disable |
 | `LLM_KEY_ENCRYPTION_KEY` | Fernet key for per-user API keys |
-| `JWT_SECRET` | Change before deploying |
+| `JWT_SECRET` | Change before deploying — use `python3 -c 'import secrets; print(secrets.token_hex(32))'` |
+| `LLM_KEY_ENCRYPTION_KEY` | Fernet key for encrypting per-user API keys — generate with `Fernet.generate_key()` |
 | `GITHUB_CLIENT_ID/SECRET/REDIRECT_URI` | GitHub OAuth — leave blank to disable |
 | `DASHBOARD_USER` / `DASHBOARD_PASS` | HTTP Basic Auth for `/dashboard` |
 | `TOP_N_MATCHES` | Max candidates dispatched per request (default `3`) |
