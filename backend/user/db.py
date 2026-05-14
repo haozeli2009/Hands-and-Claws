@@ -402,31 +402,68 @@ class UserDB:
                     for r in await cur.fetchall()
                 ]
 
+    async def _username_name_lookup(self, db, tokens: list[str],
+                                     exclude_uid: int,
+                                     type_filter: str) -> list:
+        """Return profile rows whose username or display name matches any token."""
+        # type_filter: '!= fallback' for real users, '= fallback' for fallback pool
+        op = "!=" if type_filter == "real" else "="
+        hits = []
+        seen = set()
+        for token in tokens:
+            if len(token) < 3:
+                continue
+            async with db.execute(f"""
+                SELECT p.uid, p.name, p.bio, p.skills, p.location,
+                       p.availability, p.updated_at,
+                       p.rating_avg, p.rating_count, u.participant_type
+                FROM profiles p JOIN users u ON u.uid = p.uid
+                WHERE (LOWER(u.username) = LOWER(?)
+                       OR LOWER(p.name) LIKE LOWER('%' || ? || '%'))
+                  AND p.uid != ? AND p.availability = 1
+                  AND u.participant_type {op} 'fallback'
+            """, (token, token, exclude_uid)) as cur:
+                for r in await cur.fetchall():
+                    if r["uid"] not in seen:
+                        seen.add(r["uid"])
+                        hits.append(r)
+        return hits
+
     async def search_profiles(self, query: str, exclude_uid: int = -1,
                                limit: int = 50) -> list[ProfileRow]:
-        """FTS5 search on skills+bio, availability-filtered. Falls back to full scan."""
+        """FTS5 search on skills+bio, availability-filtered. Falls back to full scan.
+        Also matches on username/display-name so users can be found by name directly."""
         async with aiosqlite.connect(self._path) as db:
             db.row_factory = aiosqlite.Row
             rows = []
-            if query.strip():
-                safe_q = " OR ".join(re.findall(r'\w+', query))
-                if safe_q:
-                    try:
-                        async with db.execute("""
-                            SELECT p.uid, p.name, p.bio, p.skills, p.location,
-                                   p.availability, p.updated_at,
-                                   p.rating_avg, p.rating_count, u.participant_type
-                            FROM profiles p
-                            JOIN users u ON u.uid = p.uid
-                            JOIN profiles_fts f ON f.rowid = p.uid
-                            WHERE profiles_fts MATCH ? AND p.uid != ? AND p.availability = 1
-                              AND u.participant_type != 'fallback'
-                            ORDER BY f.rank
-                            LIMIT ?
-                        """, (safe_q, exclude_uid, limit)) as cur:
-                            rows = await cur.fetchall()
-                    except Exception:
-                        logger.warning("FTS search failed, falling back to availability scan")
+            tokens = re.findall(r'\w+', query) if query.strip() else []
+            seen_uids: set[int] = set()
+
+            if tokens:
+                safe_q = " OR ".join(tokens)
+                try:
+                    async with db.execute("""
+                        SELECT p.uid, p.name, p.bio, p.skills, p.location,
+                               p.availability, p.updated_at,
+                               p.rating_avg, p.rating_count, u.participant_type
+                        FROM profiles p
+                        JOIN users u ON u.uid = p.uid
+                        JOIN profiles_fts f ON f.rowid = p.uid
+                        WHERE profiles_fts MATCH ? AND p.uid != ? AND p.availability = 1
+                          AND u.participant_type != 'fallback'
+                        ORDER BY f.rank
+                        LIMIT ?
+                    """, (safe_q, exclude_uid, limit)) as cur:
+                        rows = list(await cur.fetchall())
+                        seen_uids = {r["uid"] for r in rows}
+                except Exception:
+                    logger.warning("FTS search failed, falling back to availability scan")
+
+                # Prepend any username/name matches not already in FTS results
+                name_hits = await self._username_name_lookup(db, tokens, exclude_uid, "real")
+                extra = [r for r in name_hits if r["uid"] not in seen_uids]
+                rows = extra + rows
+
             if not rows:
                 async with db.execute("""
                     SELECT p.uid, p.name, p.bio, p.skills, p.location,
@@ -436,7 +473,8 @@ class UserDB:
                     WHERE p.uid != ? AND p.availability = 1
                       AND u.participant_type != 'fallback' LIMIT ?
                 """, (exclude_uid, limit)) as cur:
-                    rows = await cur.fetchall()
+                    rows = list(await cur.fetchall())
+
             return [
                 ProfileRow(uid=r["uid"], name=r["name"], bio=r["bio"],
                            skills=r["skills"], location=r["location"],
@@ -449,29 +487,38 @@ class UserDB:
             ]
 
     async def search_fallback_profiles(self, query: str, limit: int = 10) -> list[ProfileRow]:
-        """FTS5 search restricted to fallback users. Falls back to full scan of fallbacks."""
+        """FTS5 search restricted to fallback users. Falls back to full scan of fallbacks.
+        Also matches on username/display-name tokens."""
         async with aiosqlite.connect(self._path) as db:
             db.row_factory = aiosqlite.Row
             rows = []
-            if query.strip():
-                safe_q = " OR ".join(re.findall(r'\w+', query))
-                if safe_q:
-                    try:
-                        async with db.execute("""
-                            SELECT p.uid, p.name, p.bio, p.skills, p.location,
-                                   p.availability, p.updated_at,
-                                   p.rating_avg, p.rating_count, u.participant_type
-                            FROM profiles p
-                            JOIN users u ON u.uid = p.uid
-                            JOIN profiles_fts f ON f.rowid = p.uid
-                            WHERE profiles_fts MATCH ? AND u.participant_type = 'fallback'
-                              AND p.availability = 1
-                            ORDER BY f.rank
-                            LIMIT ?
-                        """, (safe_q, limit)) as cur:
-                            rows = await cur.fetchall()
-                    except Exception:
-                        logger.warning("Fallback FTS search failed, using full scan")
+            tokens = re.findall(r'\w+', query) if query.strip() else []
+            seen_uids: set[int] = set()
+
+            if tokens:
+                safe_q = " OR ".join(tokens)
+                try:
+                    async with db.execute("""
+                        SELECT p.uid, p.name, p.bio, p.skills, p.location,
+                               p.availability, p.updated_at,
+                               p.rating_avg, p.rating_count, u.participant_type
+                        FROM profiles p
+                        JOIN users u ON u.uid = p.uid
+                        JOIN profiles_fts f ON f.rowid = p.uid
+                        WHERE profiles_fts MATCH ? AND u.participant_type = 'fallback'
+                          AND p.availability = 1
+                        ORDER BY f.rank
+                        LIMIT ?
+                    """, (safe_q, limit)) as cur:
+                        rows = list(await cur.fetchall())
+                        seen_uids = {r["uid"] for r in rows}
+                except Exception:
+                    logger.warning("Fallback FTS search failed, using full scan")
+
+                name_hits = await self._username_name_lookup(db, tokens, -1, "fallback")
+                extra = [r for r in name_hits if r["uid"] not in seen_uids]
+                rows = extra + rows
+
             if not rows:
                 async with db.execute("""
                     SELECT p.uid, p.name, p.bio, p.skills, p.location,
