@@ -384,6 +384,16 @@ Your job:
                     }
                 await self.protocol.send_task_card(supply_uid, supply_card)
 
+                if supply_uid in self._fallback_uids:
+                    await self.protocol.broadcast_group_message(
+                        self._cid, supply_uid,
+                        "Sorry you're seeing this — you've been matched with a "
+                        "Hands & Claws Fallback User. This is because we don't have "
+                        "enough real registered users yet to handle your request. "
+                        "Invite others to sign up so future requests get matched with "
+                        "real people!",
+                    )
+
         await self.protocol.send_pipeline_step(
             self._cid, self._uid, step_id,
             f"{name} {'accepted' if accepted else 'declined'}", result_detail, result_status,
