@@ -167,8 +167,7 @@ function ParticipantStatusPill({ status }) {
 }
 
 function ParticipantTypeBadge({ type }) {
-  if (type !== 'agent') return null
-  return (
+  if (type === 'agent') return (
     <span style={{
       background: '#f0f9ff', border: '1px solid #bae6fd',
       color: '#0369a1', borderRadius: 8,
@@ -178,6 +177,17 @@ function ParticipantTypeBadge({ type }) {
       Agent
     </span>
   )
+  if (type === 'fallback') return (
+    <span style={{
+      background: '#faf5ff', border: '1px solid #e9d5ff',
+      color: '#7c3aed', borderRadius: 8,
+      padding: '0 5px', fontSize: 9, fontWeight: 700,
+      letterSpacing: '0.04em', flexShrink: 0,
+    }}>
+      Fallback
+    </span>
+  )
+  return null
 }
 
 function Avatar({ name, size = 30, faded = false }) {

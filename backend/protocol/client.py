@@ -100,6 +100,12 @@ class ProtocolClient:
         return await self._user_db.search_profiles(query=query, exclude_uid=exclude_uid,
                                                     limit=limit)
 
+    async def search_fallback_profiles(self, query: str, limit: int = 10):
+        """FTS search restricted to fallback users — used when no real users match."""
+        if self._user_db is None:
+            return []
+        return await self._user_db.search_fallback_profiles(query=query, limit=limit)
+
     async def get_profile(self, uid: int):
         """Return a single ProfileRow by uid, or None."""
         if self._user_db is None:

@@ -420,6 +420,7 @@ class UserDB:
                             JOIN users u ON u.uid = p.uid
                             JOIN profiles_fts f ON f.rowid = p.uid
                             WHERE profiles_fts MATCH ? AND p.uid != ? AND p.availability = 1
+                              AND u.participant_type != 'fallback'
                             ORDER BY f.rank
                             LIMIT ?
                         """, (safe_q, exclude_uid, limit)) as cur:
@@ -432,8 +433,54 @@ class UserDB:
                            p.availability, p.updated_at, p.rating_avg, p.rating_count,
                            u.participant_type
                     FROM profiles p JOIN users u ON u.uid = p.uid
-                    WHERE p.uid != ? AND p.availability = 1 LIMIT ?
+                    WHERE p.uid != ? AND p.availability = 1
+                      AND u.participant_type != 'fallback' LIMIT ?
                 """, (exclude_uid, limit)) as cur:
+                    rows = await cur.fetchall()
+            return [
+                ProfileRow(uid=r["uid"], name=r["name"], bio=r["bio"],
+                           skills=r["skills"], location=r["location"],
+                           availability=bool(r["availability"]),
+                           updated_at=r["updated_at"],
+                           rating_avg=r["rating_avg"],
+                           rating_count=r["rating_count"] or 0,
+                           participant_type=r["participant_type"])
+                for r in rows
+            ]
+
+    async def search_fallback_profiles(self, query: str, limit: int = 10) -> list[ProfileRow]:
+        """FTS5 search restricted to fallback users. Falls back to full scan of fallbacks."""
+        async with aiosqlite.connect(self._path) as db:
+            db.row_factory = aiosqlite.Row
+            rows = []
+            if query.strip():
+                safe_q = " OR ".join(re.findall(r'\w+', query))
+                if safe_q:
+                    try:
+                        async with db.execute("""
+                            SELECT p.uid, p.name, p.bio, p.skills, p.location,
+                                   p.availability, p.updated_at,
+                                   p.rating_avg, p.rating_count, u.participant_type
+                            FROM profiles p
+                            JOIN users u ON u.uid = p.uid
+                            JOIN profiles_fts f ON f.rowid = p.uid
+                            WHERE profiles_fts MATCH ? AND u.participant_type = 'fallback'
+                              AND p.availability = 1
+                            ORDER BY f.rank
+                            LIMIT ?
+                        """, (safe_q, limit)) as cur:
+                            rows = await cur.fetchall()
+                    except Exception:
+                        logger.warning("Fallback FTS search failed, using full scan")
+            if not rows:
+                async with db.execute("""
+                    SELECT p.uid, p.name, p.bio, p.skills, p.location,
+                           p.availability, p.updated_at, p.rating_avg, p.rating_count,
+                           u.participant_type
+                    FROM profiles p JOIN users u ON u.uid = p.uid
+                    WHERE u.participant_type = 'fallback' AND p.availability = 1
+                    LIMIT ?
+                """, (limit,)) as cur:
                     rows = await cur.fetchall()
             return [
                 ProfileRow(uid=r["uid"], name=r["name"], bio=r["bio"],

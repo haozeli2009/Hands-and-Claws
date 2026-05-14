@@ -90,6 +90,7 @@ class Orchestrator(BaseAgent):
         self._accepted_supply: list[dict]        = []   # for supply card peers
         self._demand_info:     dict              = {}
         self._alias_to_uid:    dict[str, int]    = {}   # alias → real UID (server-side only)
+        self._fallback_uids:   set[int]          = set()  # UIDs that are fallback accounts
         self._rank_done        = False
         self._thinking_parts:  list[str]         = []
         self._thinking_at_rank = 0
@@ -124,11 +125,24 @@ class Orchestrator(BaseAgent):
         )
 
         if not shortlist:
-            await p.send_pipeline_step(cid, uid, "fetch",
-                                       "No users found", "Nobody else is registered yet.", "failed")
-            await p.send_status(cid=cid, uid=uid,
-                                status_list="No supply-side users are registered yet. Ask others to sign up!")
-            return
+            shortlist = await p.search_fallback_profiles(
+                query=f"{intent} {data}",
+                limit=Config.FTS_CANDIDATE_POOL,
+            )
+            if shortlist:
+                self._fallback_uids = {pr.uid for pr in shortlist}
+                await p.send_pipeline_step(
+                    cid, uid, "fetch", "Fallback experts matched",
+                    f"No registered users available — matched {len(shortlist)} platform expert"
+                    f"{'s' if len(shortlist) != 1 else ''}",
+                    "done",
+                )
+            else:
+                await p.send_pipeline_step(cid, uid, "fetch",
+                                           "No users found", "Nobody else is registered yet.", "failed")
+                await p.send_status(cid=cid, uid=uid,
+                                    status_list="No supply-side users are registered yet. Ask others to sign up!")
+                return
 
         # Build alias map — UIDs never leave the server in the LLM prompt
         self._alias_to_uid = {_make_alias(i): pr.uid for i, pr in enumerate(shortlist)}
@@ -292,8 +306,13 @@ Your job:
         fut = asyncio.get_event_loop().create_future()
         self._pending[accept_key] = fut
 
-        await self.protocol.send_task_to_delegate(cid=self._cid, uid=supply_uid, task=task)
-        logger.info("Dispatched task to uid=%d [cid=%s]", supply_uid, self._cid)
+        if supply_uid in self._fallback_uids:
+            # Fallback users auto-accept — no real WebSocket to route through
+            fut.set_result(True)
+            logger.info("Fallback auto-accept uid=%d [cid=%s]", supply_uid, self._cid)
+        else:
+            await self.protocol.send_task_to_delegate(cid=self._cid, uid=supply_uid, task=task)
+            logger.info("Dispatched task to uid=%d [cid=%s]", supply_uid, self._cid)
 
         try:
             accepted: bool = await asyncio.wait_for(fut, timeout=Config.ACCEPT_TIMEOUT)
